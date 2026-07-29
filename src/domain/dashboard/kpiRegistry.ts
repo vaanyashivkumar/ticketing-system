@@ -48,6 +48,7 @@ export type KpiId =
   | 'dueSoon'
   | 'slaCompliance'
   | 'reopenRate'
+  | 'completed'
   | 'resolvedToday'
   | 'avgResolution';
 
@@ -304,6 +305,21 @@ export const KPI_DEFINITIONS: readonly KpiDefinition[] = [
     },
     drillTo: () => '/app/reports',
     nullHint: 'No tickets to measure yet',
+  },
+  {
+    id: 'completed',
+    label: 'Completed',
+    question: 'How much of this work has been resolved or closed?',
+    metric: 'R1',
+    dataScope: 'department-wide',
+    icon: CheckCircle2,
+    denominator: () => 'Requests that have reached Resolved or Closed. Drafts and cancellations are not counted here.',
+    compute: ({ visible }) => {
+      const n = visible.filter((t) => t.status === 'Resolved' || t.status === 'Closed').length;
+      return { value: n, state: 'ok' };
+    },
+    drillTo: () => '/app/tickets',
+    nullHint: 'Nothing completed yet',
   },
   {
     id: 'resolvedToday',

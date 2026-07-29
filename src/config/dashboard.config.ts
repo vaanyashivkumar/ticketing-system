@@ -183,14 +183,15 @@ const AT_RISK: WorkQueueWidget = {
   column: 'main',
 };
 
-/** PRD §10.1/§10.2 — pure requester: R1 open, R6 overdue, R4 compliance, R12 reopen rate. */
+/** PRD §10.1/§10.2 — pure requester: R1 open, R6 overdue, R4 compliance, R12 reopen rate, plus a
+ *  Completed count (resolved/closed of my own requests), 2026-07-29 stakeholder request. */
 const REQUESTER_KPIS: KpiRowWidget = {
   id: 'kpis',
   type: 'kpi-row',
   title: 'My requests at a glance',
   question: 'What have I got in flight, what is late, and am I being served on time?',
   dataScope: 'created-by-me',
-  kpis: ['open', 'needsMe', 'overdue', 'slaCompliance', 'reopenRate'],
+  kpis: ['open', 'needsMe', 'overdue', 'slaCompliance', 'reopenRate', 'completed'],
   priority: 0,
   column: 'main',
 };
