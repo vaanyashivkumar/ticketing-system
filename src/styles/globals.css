@@ -1,0 +1,333 @@
+/**
+ * TYPEFACES ARE SELF-HOSTED, and until now were not present at all.
+ *
+ * `tokens.css` has declared `--font-sans: Inter, …` since phase 2, and nothing in the build ever
+ * loaded Inter — no @font-face, no link tag, no package. Every screen has been rendering in the
+ * `system-ui` fallback (Segoe UI on Windows) while the design system asserted otherwise. The token
+ * named a typeface the application did not have.
+ *
+ * Both families are bundled from npm rather than fetched from a CDN: this application already
+ * refuses external requests, an internal tool has to work on a restricted network, and a webfont
+ * request is a third party learning who signs in and when. Both are Open Font Licence.
+ *
+ * Variable fonts on the OPTICAL SIZING axis — one file covers every weight, and `opsz` lets the
+ * letterforms adapt between a 12px table label and a 48px headline instead of scaling a single
+ * drawing to both. That is most of what separates this from a webfont bolted on.
+ */
+@import '@fontsource-variable/inter/opsz.css';
+@import '@fontsource-variable/source-serif-4/opsz.css';
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Shared form control (phase-2 §6 input). Token-driven. */
+  .input {
+    @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-body text-text;
+    @apply placeholder:text-text-muted;
+    /**
+     * Transition the BORDER only, never the outline. The focus outline must appear on the same
+     * frame as the focus — animating it in makes keyboard navigation feel laggy at exactly the
+     * moment a keyboard user needs certainty about where they are.
+     */
+    transition: border-color var(--duration-fast) var(--ease-standard),
+                background-color var(--duration-fast) var(--ease-standard);
+  }
+  .input:hover:not(:disabled):not(:focus-visible) {
+    border-color: var(--color-border-strong);
+  }
+  .input:focus-visible {
+    border-color: var(--color-focus-ring);
+  }
+  .input:disabled {
+    @apply cursor-not-allowed bg-surface-sunken text-text-muted;
+  }
+
+  /**
+   * AUTOFILL ARMOUR. Chromium paints saved-credential fields with its own forced light
+   * background, which authors cannot override with `background-color` — in the dark theme that
+   * is a white box holding near-invisible text (measured live: 1.16:1 on the sign-in fields the
+   * moment Chrome had credentials saved for this origin). The inset box-shadow is the standard
+   * counter: it paints OVER the forced background, and `-webkit-text-fill-color` wins where
+   * `color` loses. Found by axe against the running page, not by reading code — an empty profile
+   * never shows it, which is exactly why it survives review.
+   */
+  .input:-webkit-autofill,
+  .input:-webkit-autofill:hover,
+  .input:-webkit-autofill:focus {
+    -webkit-box-shadow: inset 0 0 0 1000px var(--color-surface);
+    -webkit-text-fill-color: var(--color-text);
+    caret-color: var(--color-text);
+  }
+
+  /**
+   * EDITORIAL TYPE — the serif display voice, for surfaces that are read rather than operated.
+   *
+   * Proportional (old-style) figures, overriding the global `tabular-nums`. Tabular figures are
+   * correct in a table, where digits must align down a column; in a headline they leave visible
+   * gaps around a 1, because every glyph is padded to the width of the widest. The global default
+   * stays tabular because this application is mostly data — this is the exception, scoped.
+   */
+  .editorial {
+    font-family: var(--font-serif);
+    font-variant-numeric: proportional-nums oldstyle-nums;
+    font-optical-sizing: auto;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * SURFACES — one definition each, replacing ~40 hand-copied declarations.
+   *
+   * `rounded-lg border border-border bg-surface p-4` appeared fifteen times verbatim and another
+   * twenty-odd with a different padding or an extra utility. Nothing was wrong with any of them;
+   * the problem is that a card is a DECISION, and forty copies of a decision are forty things that
+   * drift. Tuning elevation or radius meant a find-and-replace that could not be verified.
+   *
+   * These are `@layer components`, so any utility in the markup still wins — a page that genuinely
+   * needs `p-5` writes `card p-5` and gets it, without opting out of the system.
+   * ------------------------------------------------------------------------- */
+
+  /** The standard resting surface: panels, cards, list containers. */
+  .card {
+    @apply rounded-lg border border-border bg-surface;
+  }
+
+  /** The same surface with the standard internal padding. */
+  .card-p {
+    @apply card p-4;
+  }
+
+  /**
+   * A card that is itself a control — a link or button covering the whole surface.
+   *
+   * The lift is ONE pixel. Cards that rise 4px on hover make a grid feel like it is breathing, and
+   * on a dashboard of eleven tiles the cumulative effect is restlessness. `motion-reduce` removes
+   * the transform and keeps the border and shadow change, so the affordance survives without the
+   * movement.
+   */
+  .card-interactive {
+    @apply card transition-[border-color,box-shadow,transform] duration-base ease-standard;
+    @apply hover:-translate-y-px hover:border-border-strong hover:shadow-e2;
+    @apply focus-visible:border-border-strong motion-reduce:hover:translate-y-0;
+  }
+
+  /* ---- Data tables ---------------------------------------------------------
+   * A ticket table is read down a column, so the column has to be readable as a column: figures
+   * aligned, headers quiet, rows separated by the lightest line that still separates.
+   * ------------------------------------------------------------------------- */
+
+  .table-shell {
+    @apply card overflow-hidden;
+  }
+
+  /**
+   * Column headers are LABELS, not headings — quiet, so the data is what is scanned.
+   *
+   * `text-secondary`, NOT `text-muted`. This class shipped with `text-text-muted`, which is
+   * 4.34:1 on `surface-sunken` in the light theme — below AA. Every table it was applied to lost
+   * header contrast, because the pages it replaced had all correctly used `text-text-secondary`
+   * (6.92:1). A shared class is the right idea precisely because it makes one decision once; it
+   * also means one wrong decision reaches every table at once, which is what happened here.
+   */
+  .th {
+    @apply bg-surface-sunken px-4 py-2 text-left text-label-sm uppercase tracking-wide text-text-secondary;
+  }
+
+  /**
+   * `py-2`, not `py-3`. This project REMAPS Tailwind's spacing scale onto 8-point tokens, so
+   * `py-3` is `var(--space-3)` = 24px, not Tailwind's stock 12px. Written without checking, it
+   * made every data row ~50% taller than the `py-2` (16px) the tables already used — a density
+   * regression on the queue, dressed as a refactor.
+   */
+  .td {
+    @apply px-4 py-2 text-body text-text;
+  }
+
+  /**
+   * Figures line up down the column. Without `tabular-nums` a 1 is narrower than a 7, so a column
+   * of amounts or counts is visibly ragged and slower to compare — the single most common reason a
+   * data table reads as amateur.
+   */
+  .td-num {
+    @apply td text-right tabular-nums;
+  }
+
+  /**
+   * The row hover tint — INSTANT, with no transition.
+   *
+   * This shipped as `transition-colors duration-fast`, which broke the rule this design pass was
+   * built on: no motion on dense data. On a queue of 25 rows, a 120ms colour fade under a moving
+   * pointer means several rows mid-fade at once, and the row under the cursor is the last to
+   * confirm it. Hover feedback on a table has to be immediate — it is answering "which row am I
+   * on", and a transition is latency on that answer.
+   */
+  .row-hover {
+    @apply hover:bg-row-hover;
+  }
+
+  /* ---- Buttons -------------------------------------------------------------
+   * `min-h-10` on every variant: a 40px target, which is the phase-2 minimum and the reason these
+   * are classes rather than a shrug at whatever padding each page happened to use.
+   * ------------------------------------------------------------------------- */
+
+  .btn {
+    @apply inline-flex min-h-10 items-center justify-center gap-1.5 rounded-md px-3 text-body-medium;
+    @apply transition-[background-color,border-color,transform] duration-fast ease-standard;
+    /* A press that moves is a press that registered — the cheapest possible latency feedback. */
+    @apply active:scale-[0.99] motion-reduce:active:scale-100;
+    @apply disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-primary-on hover:bg-primary-hover;
+  }
+
+  .btn-neutral {
+    @apply btn border border-border bg-surface text-text hover:bg-surface-sunken;
+  }
+
+  .btn-quiet {
+    @apply btn text-text-secondary hover:bg-surface-sunken hover:text-text;
+  }
+
+  /** Destructive actions are never colour alone — the label always says what will happen. */
+  .btn-danger {
+    @apply btn border border-error bg-error-bg text-error-text hover:bg-error hover:text-primary-on;
+  }
+
+  /**
+   * A hairline rule that fades out at both ends, for section breaks on editorial surfaces. A
+   * full-strength 1px line across a wide column is heavier than the type it divides.
+   */
+  .rule-fade {
+    height: 1px;
+    border: 0;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--color-border) 15%,
+      var(--color-border) 85%,
+      transparent
+    );
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Global element styles (P11 §9). Token-driven only. Anything visual here must
+ * reference a design token, never a raw value.
+ * ------------------------------------------------------------------------- */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    font-family: var(--font-sans);
+    /**
+     * Let the variable font use its OPTICAL SIZING axis. Without this the browser renders one
+     * drawing at every size: display type keeps the thick strokes and open spacing meant for
+     * 13px table text, which is the single most common reason a good typeface looks cheap large.
+     */
+    font-optical-sizing: auto;
+    /**
+     * `cv11` is Inter's single-storey 'a' … deliberately NOT enabled. It reads as a geometric,
+     * consumer-app voice; the two-storey default is the more neutral, institutional one, which is
+     * what this is. `calt` (contextual alternates) and `ss03` (compact punctuation) are on because
+     * they only ever improve spacing.
+     */
+    font-feature-settings: 'calt' 1, 'ss03' 1;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessible focus — never removed (phase-2 §9). */
+  :focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
+  h1, h2, h3, h4 {
+    margin: 0;
+    color: var(--color-text);
+    font-weight: 600;
+    /**
+     * Stops the last line of a heading breaking to a single orphaned word — the commonest thing
+     * that makes an otherwise careful layout look unconsidered. Unsupported browsers ignore it.
+     */
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  ul, ol {
+    margin: 0;
+  }
+
+  img, svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  code, pre {
+    font-family: var(--font-mono);
+  }
+
+  /* Restrained scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-strong);
+    border-radius: var(--radius-full);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::selection {
+    background-color: var(--color-selected-bg);
+    color: var(--color-text);
+  }
+
+  /* Respect reduced-motion (phase-2 §8). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

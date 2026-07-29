@@ -1,0 +1,226 @@
+/**
+ * Design tokens. These CSS custom properties are the ONLY place raw values live.
+ * tailwind.config.ts binds every utility to a var() here. Never hardcode a colour/space value
+ * in a component.
+ *
+ * ⚠️ THE COLOUR PALETTE NO LONGER TRACES TO phase-2 §2. Rethemed 2026-07-22 on stakeholder
+ * direction: warm editorial neutrals (ivory paper, warm charcoal text) with a clay accent,
+ * replacing the original cool slate + blue. Spacing, radius, motion and type scale are unchanged
+ * and still trace to §4/§5/§8. The design-system document needs reconciling to this palette —
+ * until then, THIS FILE is the source of truth for colour, not the doc.
+ *
+ * EVERY ratio in the comments below was MEASURED (WCAG 2.1 relative luminance), not eyeballed —
+ * the retheme was accepted only after every critical pair passed AA (≥4.5:1 text, ≥3:1 focus).
+ * The check script lives in the session scratchpad (contrast.py); re-run it before tuning any
+ * value here. History says eyeballing fails quietly: A11Y-001/-007/-008 were all colours that
+ * "looked fine".
+ *
+ * Three tokens still have no counterpart in the design system (pre-dating the retheme):
+ *   --color-scrim        codifies a previously hardcoded `bg-black/40` (D04 #13)
+ *   --color-primary-text primary-as-text; a fill tuned to carry white is not automatically
+ *                        legible AS text (A11Y-001)
+ *   --color-accent-text  accent-as-text (A11Y-007)
+ */
+
+:root {
+  /* ---- Base semantic colours (warm editorial retheme — see header) ---- */
+  /* Ivory paper, not white-blue. The page is the warmest surface; cards sit on it in true
+     white, so content reads as lifted off the paper rather than cut into it. */
+  --color-bg: #faf9f5;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-surface-sunken: #f0eee6;
+  /* Clay, replacing blue. White on it: 4.95:1 (hover 5.86, active 7.02) — AA held on all
+     three states, which is what bounded how light this fill could go. */
+  --color-primary: #b9502a;
+  --color-primary-hover: #a8471f;
+  --color-primary-active: #93401e;
+  --color-on-primary: #ffffff;
+  /* Primary as FOREGROUND TEXT, not as a fill (A11Y-001). The fill itself is only 3.4:1 as
+     text on white, so links and coded references use this darker clay: 6.53:1 on white,
+     5.62:1 on sunken, 6.20:1 on bg. */
+  --color-primary-text: #9c4222;
+  --color-secondary: #52504a;
+  --color-btn-neutral-text: #3d3a33;
+  /* Accent unified onto the clay family. The old teal was a second brand hue; the warm
+     editorial voice is one accent doing all the accent work, tint included. */
+  --color-accent: #b9502a;
+  /* Accent as FOREGROUND TEXT (A11Y-007): 5.57:1 on the tint, 6.53:1 on white. */
+  --color-accent-text: #9c4222;
+  --color-accent-tint: #f6ebe2;
+  --color-selected-bg: var(--color-accent-tint);
+  --color-selected-border: var(--color-accent);
+  /* Modal/drawer scrim. Codifies the value previously hardcoded as `bg-black/40`, which
+     reached past the token system into Tailwind's default palette (D04 #13). */
+  --color-scrim: rgb(31 30 26 / 45%);
+  --color-border: #e4e1d6;
+  --color-border-strong: #cbc6b8;
+  /* Warm charcoal, not blue-black: 15.83:1 on bg, 14.36:1 on sunken. */
+  --color-text: #1f1e1a;
+  --color-text-secondary: #52504a;
+  /* 5.08:1 on sunken — the pair A11Y-008 caught at 4.34 in the old palette was re-measured
+     first, not last. */
+  --color-text-muted: #68645a;
+  --color-focus-ring: #b9502a;
+  --color-row-hover: #f3f1ea;
+  --color-row-active: #ebe8de;
+  --color-row-alt: #faf9f5;
+
+  /* ---- Feedback colours (§2.2): bare = -fill ---- */
+  --color-success: #16a34a;
+  --color-success-text: #15803d;
+  --color-success-bg: #f0fdf4;
+  --color-success-active: #15803d;
+  --color-warning: #d97706;
+  --color-warning-text: #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-warning-active: #b45309;
+  --color-error: #dc2626;
+  --color-error-text: #b91c1c;
+  --color-error-bg: #fef2f2;
+  --color-error-active: #991b1b;
+  --color-info: #0284c7;
+  --color-info-text: #0369a1;
+  --color-info-bg: #f0f9ff;
+  --color-info-active: #075985;
+
+  /* ---- Typography (§3) ---- */
+  /**
+   * 'Inter Variable' is the family name @fontsource registers. Plain 'Inter' silently misses the
+   * bundled file and falls through to system-ui — which is precisely what happened for five phases
+   * while this token claimed Inter and nothing in the build loaded it. Both names are listed so a
+   * locally-installed Inter is honoured too.
+   */
+  --font-sans: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /**
+   * Editorial display face — used ONLY for the sign-in headline and the largest page titles.
+   *
+   * A serif on an operational screen would be a mistake: at 13px in a dense table it reads slower
+   * and looks like decoration. Its job is to give the product a voice on the two or three surfaces
+   * a person looks AT, rather than the many they work THROUGH.
+   */
+  --font-serif: 'Source Serif 4 Variable', 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ---- Spacing — 8-point (§4) ---- */
+  --space-0-5: 4px;
+  --space-1: 8px;
+  --space-1-5: 12px;
+  --space-2: 16px;
+  --space-2-5: 20px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+
+  /* ---- Radius (§5) ---- */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /**
+   * ---- Elevation (§5) — restrained, and now LAYERED ----
+   *
+   * Each level is two shadows, not one: a tight contact shadow that grounds the edge, plus a wider
+   * ambient shadow for the cast. A single blur is what makes a card look stuck onto the page
+   * instead of resting on it — real light produces both, and the eye notices the absence long
+   * before it can name it. The total opacity is unchanged, so nothing got heavier; it got softer
+   * in the right place.
+   */
+  /* Shadow ink matches the warm text colour — a cool slate shadow on ivory paper reads as a
+     faint blue halo, which is the kind of mismatch nobody names but everybody senses. */
+  --elevation-e1: 0 1px 1px rgb(31 30 26 / 4%), 0 1px 3px rgb(31 30 26 / 5%);
+  --elevation-e2: 0 1px 2px rgb(31 30 26 / 5%), 0 6px 14px -4px rgb(31 30 26 / 9%);
+  --elevation-e3: 0 2px 4px rgb(31 30 26 / 5%), 0 16px 32px -10px rgb(31 30 26 / 14%);
+  /** A hairline that reads as a drawn edge rather than a border, for large editorial surfaces. */
+  --elevation-hairline: inset 0 0 0 1px rgb(31 30 26 / 6%);
+
+  /* ---- Motion (§8) ---- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+}
+
+:root[data-theme='dark'] {
+  /* Heavier over dark surfaces — 45% over an already-dark page reads as no scrim at all. */
+  --color-scrim: rgb(18 16 12 / 65%);
+  /* Warm dark — brown-black, not the old navy. A blue-black dark theme under a clay accent
+     would be two palettes wearing one product. */
+  --color-bg: #171512;
+  --color-surface: #211f1a;
+  --color-surface-elevated: #2a2721;
+  --color-surface-sunken: #1c1a15;
+  /**
+   * The FILL is deliberately identical to light (A11Y-001's lesson, carried forward): it exists
+   * to carry white text — 4.95:1, and darker on hover/active — and holds on a dark page too, so
+   * the button needs no dark variant. What must NOT be identical is primary-as-TEXT: the fill on
+   * --color-surface is only ~3.2:1 as text, which is exactly the copied-no-op trap axe caught in
+   * the original palette. Hence the separate, lighter --color-primary-text below.
+   */
+  --color-primary: #b9502a;
+  --color-primary-hover: #a8471f;
+  --color-primary-active: #93401e;
+  --color-on-primary: #ffffff;
+  /* Light clay for text on dark: 7.02:1 on surface, 7.41:1 on sunken, 6.35:1 on elevated. */
+  --color-primary-text: #e79575;
+  --color-secondary: #cdc8bc;
+  --color-btn-neutral-text: #cdc8bc;
+  --color-accent: #e79575;
+  /* Deliberately equals --color-accent — in dark the accent is already legible as text
+     (6.35:1 on the tint), mirroring the structure the old palette documented (A11Y-007). */
+  --color-accent-text: #e79575;
+  --color-accent-tint: #33241c;
+  --color-border: #3a362d;
+  --color-border-strong: #4c463a;
+  /* Warm off-white: 14.18:1 on surface. */
+  --color-text: #f0eee7;
+  --color-text-secondary: #cdc8bc;
+  /* 5.67:1 on surface, 5.12:1 on elevated — the elevated pair is the tight one; re-measure it
+     first if this value is ever lightened. */
+  --color-text-muted: #9d978a;
+  --color-focus-ring: #e79575;
+  --color-row-hover: #262420;
+  --color-row-active: #2c2924;
+  --color-row-alt: #1c1a16;
+
+  --color-success: #22c55e;
+  --color-success-text: #86efac;
+  --color-success-bg: #14261b;
+  --color-success-active: #16a34a;
+  --color-warning: #f59e0b;
+  --color-warning-text: #fcd34d;
+  --color-warning-bg: #2a1f0a;
+  --color-warning-active: #d97706;
+  --color-error: #ef4444;
+  --color-error-text: #fca5a5;
+  --color-error-bg: #2a1414;
+  --color-error-active: #dc2626;
+  --color-info: #0ea5e9;
+  --color-info-text: #7dd3fc;
+  --color-info-bg: #08243a;
+  --color-info-active: #0284c7;
+
+  /**
+   * ---- Elevation, dark ----
+   *
+   * These were MISSING: dark inherited the light shadows, which are near-black on an already
+   * near-black page. A shadow of `rgb(15 23 42 / 5%)` over `#0b1220` is invisible, so in dark mode
+   * every card, dropdown and modal has been sitting flat on the background with no depth cue at
+   * all — only its border separated it, and the modal scrim was doing all the work.
+   *
+   * Dark interfaces express elevation with LIGHT, not shadow: a raised surface catches more of it.
+   * So each level keeps a deeper cast shadow for separation and adds a top inset highlight, which
+   * is what actually reads as "in front" against a dark ground.
+   */
+  --elevation-e1: 0 1px 2px rgb(0 0 0 / 30%), inset 0 1px 0 rgb(255 255 255 / 4%);
+  --elevation-e2: 0 4px 12px -2px rgb(0 0 0 / 40%), inset 0 1px 0 rgb(255 255 255 / 5%);
+  --elevation-e3: 0 12px 32px -8px rgb(0 0 0 / 55%), inset 0 1px 0 rgb(255 255 255 / 6%);
+  --elevation-hairline: inset 0 0 0 1px rgb(255 255 255 / 8%);
+}
