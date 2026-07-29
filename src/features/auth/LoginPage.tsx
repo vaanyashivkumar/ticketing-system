@@ -110,22 +110,29 @@ export function LoginPage() {
           style={{ background: 'radial-gradient(circle, var(--color-accent-tint), transparent 70%)' }}
         />
 
-        <div className="relative flex items-center gap-2.5">
-          {/* The organisation's own globe mark (2026-07-22, stakeholder-supplied) replaces the
-              IDT placeholder square. Decorative — the adjacent text carries the name. */}
-          <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-8 w-8 object-contain" />
-          <span className="text-label text-text-secondary">
-            Bradford International Alliance · Inter-Departmental Ticketing
-          </span>
+        <div className="relative">
+          {/* The organisation's FULL brand lockup (globe + wordmark). Transparent PNG, so it sits
+              cleanly on the light panel; in dark theme the black wordmark needs a light chip. */}
+          <img
+            src={`${import.meta.env.BASE_URL}brand/bia-logo.png`}
+            alt="Bradford International Alliance"
+            width="1400"
+            height="402"
+            /* Explicit box at the lockup's 3.48:1 aspect (195×56) so width is deterministic. */
+            className="h-[56px] w-[195px] object-contain object-left dark:rounded-lg dark:bg-white dark:p-2"
+          />
         </div>
 
         <div className="relative max-w-xl">
+          {/* The product name is the hero of this panel now — moved out of the small brand line
+              and up to display size (stakeholder request, 2026-07-28). */}
           <h2 ref={headline} className="editorial text-editorial-xl text-text">
-            Every request, on the record.
+            Inter-Departmental Ticketing
           </h2>
           <p ref={lede} className="mt-5 max-w-md text-lede text-text-secondary">
-            One route from the department that asks to the department that answers — with the
-            deadline, the decision and the person accountable for it kept together.
+            Every request, on the record — one route from the department that asks to the
+            department that answers, with the deadline, the decision and the person accountable
+            for it kept together.
           </p>
 
           <dl ref={marks} className="mt-10 grid max-w-md grid-cols-2 gap-x-8 gap-y-4">
@@ -152,9 +159,14 @@ export function LoginPage() {
         <div className="w-full max-w-sm">
           {/* The identity mark repeats here because on narrow screens the panel is not rendered
               at all, and the page would otherwise open with a bare input. */}
-          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-9 w-9 object-contain" />
-            <span className="text-body-medium text-text">Inter-Departmental Ticketing</span>
+          <div className="mb-8 lg:hidden">
+            <img
+              src={`${import.meta.env.BASE_URL}brand/bia-logo.png`}
+              alt="Bradford International Alliance"
+              width="1400"
+              height="402"
+              className="h-10 w-[139px] object-contain object-left dark:rounded-lg dark:bg-white dark:p-1.5"
+            />
           </div>
 
           <h1 className="text-h1 text-text">Sign in</h1>

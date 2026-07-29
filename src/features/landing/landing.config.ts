@@ -5,10 +5,10 @@
  * marketing rounding. If the routing matrix is ever extended (the one change §2.3 permits),
  * these figures change here and nowhere else.
  *
- * All copy is ORIGINAL. The page's motion language is Anthropic-INSPIRED — scroll-driven scale,
- * staggered word reveals, cards that enlarge into detail — which per the project's binding rule
- * means craft only: no external brand's copy, artwork or marks. The only brand present is the
- * user's own organisation, Bradford International Alliance.
+ * All copy is ORIGINAL. The page's visual language is the product's own — the warm palette,
+ * component vocabulary and typography of the app itself — so the front door reads as part of the
+ * system, not a separate marketing splash. The only brand present is the user's own organisation,
+ * Bradford International Alliance.
  */
 
 export interface LandingFeature {
@@ -19,6 +19,11 @@ export interface LandingFeature {
   readonly detail: readonly string[];
 }
 
+export interface LifecycleStep {
+  readonly step: string;
+  readonly note: string;
+}
+
 export const LANDING = {
   org: 'Bradford International Alliance',
   product: 'Inter-Departmental Ticketing',
@@ -27,14 +32,29 @@ export const LANDING = {
     'The internal ticketing system for Bradford International Alliance routes work between ' +
     'departments with an owner, a deadline and a full history on every request — so nothing is ' +
     'lost, duplicated or quietly forgotten.',
-  /** The animated line — revealed word by word as it scrolls into view. */
-  tagline: 'Keep every request moving.',
+  /** Short proof points shown inline under the hero CTAs. */
+  heroFacts: ['6 departments', '14 routes', 'Governed SLAs', 'Full audit trail'],
   stats: [
     { value: 6, label: 'departments' },
     { value: 14, label: 'routes between them' },
     { value: 28, label: 'request categories' },
     { value: 10, label: 'lifecycle statuses' },
   ],
+  /** The happy-path journey, for the "How it works" strip. Rejections, holds and reopens exist too. */
+  lifecycle: [
+    { step: 'Submit', note: 'A requester raises it against the correct route.' },
+    { step: 'Assign', note: 'The destination department takes ownership.' },
+    { step: 'In progress', note: 'Worked against a live, priority-based SLA clock.' },
+    { step: 'Resolve', note: 'Marked done by the people who did the work.' },
+    { step: 'Close', note: 'The original requester confirms it — a two-step close.' },
+  ] as readonly LifecycleStep[],
+  featuresKicker: 'Capabilities',
+  featuresHeading: 'Built so nothing falls through',
+  featuresSubhead:
+    'Every request carries an owner, a deadline and a full history — enforced by the system, not ' +
+    'left to good intentions.',
+  ctaHeading: 'Ready when you are.',
+  ctaBody: 'Sign in with your departmental account to raise a request or work your queue.',
 } as const;
 
 export const LANDING_FEATURES: readonly LandingFeature[] = [

@@ -1,27 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, X } from 'lucide-react';
+import { ArrowRight, Check, X } from 'lucide-react';
 import { useAuth } from '@hooks/useAuth';
 import { useMotionScope } from '@hooks/useMotion';
-import { editorialIn, prefersReducedMotion, reveal, scrollReveal, scrollScale } from '@lib/motion';
+import { editorialIn, prefersReducedMotion, reveal, scrollReveal } from '@lib/motion';
 import { CountUp } from '@components/common/CountUp';
 import { LANDING, LANDING_FEATURES, type LandingFeature } from './landing.config';
 import { FeatureArt } from './LandingArt';
 
 /**
- * THE PUBLIC LANDING PAGE — the one screen in the product with marketing-grade, scroll-driven
- * motion, and the deliberate boundary stays exactly there (see `editorialIn` in lib/motion.ts).
+ * THE PUBLIC LANDING PAGE — the product's front door.
  *
- * The motion language is Anthropic-INSPIRED, which per the project's binding rule means craft
- * only — scroll-scrubbed hero growth, staggered word reveals, cards enlarging into detail —
- * with the organisation's OWN mark, original copy and original artwork. Nothing here reproduces
- * another site's content or brand.
+ * It is built from the SAME design system as the app behind it (warm palette, the `.card`/`.btn-*`
+ * vocabulary, Inter + Source Serif), so it reads as one product rather than a separate marketing
+ * splash. Motion is deliberately RESTRAINED — a considered hero entrance and a fade-up as each
+ * section scrolls into view — because an internal system's front door should feel composed and
+ * corporate, not like a demo reel.
  *
- * Every animated element is visible in its resting DOM state: if GSAP never runs (reduced
- * motion, blocked bundle), the page is simply a readable document. The globe runway degrades to
- * a static centred image; `overflow-x-clip` (clip, not hidden — hidden would break the sticky
- * positioning) guarantees the scaled globe can never mint a horizontal scrollbar, which would
- * undo the shared-left-edge alignment work.
+ * Every animated element is visible in its resting DOM state (fromTo + immediateRender:false in
+ * lib/motion.ts): with no JS, reduced motion, or the non-compositing preview pane, the page is
+ * simply a readable, correctly-laid-out document.
  */
 
 /** Mount-once-visible: defers CountUp so the numbers animate when SEEN, not at page load. */
@@ -42,12 +40,44 @@ function useInView<T extends HTMLElement>(): [React.RefObject<T>, boolean] {
   return [ref, seen];
 }
 
+/**
+ * A static, decorative snapshot of a ticket in the product's own visual language — the strongest
+ * way to say "this is an enterprise workflow tool" is to show one. Purely presentational
+ * (aria-hidden): it makes no claim about real data.
+ */
+function HeroPreview() {
+  return (
+    <div aria-hidden className="card p-5 shadow-e2">
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-mono text-caption text-text-muted">FIN-0142</span>
+        <span className="rounded-full bg-warning-bg px-2 py-0.5 text-label-sm text-warning-text">In Progress</span>
+      </div>
+      <h3 className="mt-2 text-h3 text-text">Payment link — May intake</h3>
+      <p className="mt-1 text-body-sm text-text-secondary">Sales → Finance · High priority</p>
+
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-caption">
+          <span className="text-text-muted">SLA</span>
+          <span className="text-success-text">On track · due in 6h</span>
+        </div>
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
+          <div className="h-full w-[62%] rounded-full bg-success" />
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent-tint text-label-sm text-accent-text">JC</span>
+        <span className="text-body-sm text-text-secondary">Assigned to James Carrow · 3 comments</span>
+      </div>
+    </div>
+  );
+}
+
 function FeatureDialog({ feature, onClose }: { feature: LandingFeature; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // The enlarged view is a REAL modal dialog, same contract as the app shell's drawer: focus
-  // moves in, Tab cycles within, Escape closes, and the opener gets focus back (the caller
-  // restores it — see `closeDialog`).
+  // A REAL modal dialog, same contract as the app shell's drawer: focus moves in, Tab cycles
+  // within, Escape closes, and the opener gets focus back (the caller restores it).
   useEffect(() => {
     panelRef.current?.querySelector<HTMLElement>('button')?.focus();
     const onKey = (e: KeyboardEvent) => {
@@ -88,12 +118,7 @@ function FeatureDialog({ feature, onClose }: { feature: LandingFeature; onClose:
         aria-labelledby={`land-dlg-${feature.id}`}
         className="card relative flex max-h-full w-full max-w-2xl flex-col overflow-y-auto p-5 shadow-e3 sm:p-6"
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="btn-quiet absolute right-3 top-3 px-2"
-        >
+        <button type="button" onClick={onClose} aria-label="Close" className="btn-quiet absolute right-3 top-3 px-2">
           <X size={18} aria-hidden />
         </button>
         <div className="h-40 w-full max-w-sm text-text-muted sm:h-48">
@@ -113,10 +138,9 @@ export function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [selected, setSelected] = useState<LandingFeature | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
-  const taglineRef = useRef<HTMLParagraphElement>(null);
   const [statsRef, statsSeen] = useInView<HTMLDivElement>();
 
-  // The nav grows a border once the page is genuinely scrolled — orientation, not decoration.
+  // The nav grows a hairline once the page is genuinely scrolled — orientation, not decoration.
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
@@ -124,27 +148,13 @@ export function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  /**
-   * All scroll-driven motion lives in ONE scoped context, so StrictMode's mount → cleanup →
-   * mount cycle reverts every trigger it created and nothing leaks between mounts.
-   */
+  // All motion in ONE scoped context, so StrictMode's mount → cleanup → mount reverts cleanly.
   const scope = useMotionScope<HTMLDivElement>((s) => {
     const hero = s.querySelectorAll('[data-hero] > *');
     if (hero.length) editorialIn([...hero]);
-
-    const runway = s.querySelector('[data-runway]');
-    const globe = s.querySelector('[data-globe]');
-    if (runway && globe) scrollScale(globe, { trigger: runway });
-
-    const words = s.querySelectorAll('[data-word]');
-    if (words.length && taglineRef.current) {
-      scrollReveal(words, { trigger: taglineRef.current, y: 26, amount: 0.5 });
-    }
-
-    const grid = s.querySelector('[data-grid]');
     const cards = s.querySelectorAll('[data-card]');
-    if (grid && cards.length) scrollReveal(cards, { trigger: grid, y: 22, amount: 0.4 });
-
+    const grid = s.querySelector('[data-grid]');
+    if (grid && cards.length) scrollReveal(cards, { trigger: grid, y: 20, amount: 0.4 });
     s.querySelectorAll('[data-rise]').forEach((el) => scrollReveal(el));
   }, []);
 
@@ -159,12 +169,21 @@ export function LandingPage() {
     openerRef.current = null;
   }, []);
 
-  const learnMore = useCallback(() => {
-    taglineRef.current?.scrollIntoView({
+  // Smooth-scroll to an in-page section. This is an ACTION, so the control that triggers it is a
+  // <button>, not an <a> — which also sidesteps anchor pseudo-state (:visited/:target) that made a
+  // `.btn-neutral` anchor render an incorrect background in dark mode.
+  const scrollToId = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'center',
+      block: 'start',
     });
   }, []);
+
+  const signInCta = user ? (
+    <Link to="/app/dashboard" className="btn-primary">Open dashboard</Link>
+  ) : (
+    <Link to="/login" className="btn-primary">Sign in <ArrowRight size={16} aria-hidden /></Link>
+  );
 
   return (
     <div ref={scope} className="min-h-screen overflow-x-clip bg-bg text-text">
@@ -172,11 +191,15 @@ export function LandingPage() {
         // NOT `bg-bg/95`: /opacity modifiers on bare-var() theme colours compile to nothing here.
         className={`fixed inset-x-0 top-0 z-sticky bg-bg transition-[border-color] duration-base ease-standard ${scrolled ? 'border-b border-border' : 'border-b border-transparent'}`}
       >
-        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-2.5 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-3 px-4 sm:px-6">
           {/* REMAPPED SCALE: h-5 is 40px here (8-point tokens), not 20px. */}
           <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-5 w-5 object-contain" />
           <span className="text-body-medium text-text">{LANDING.org}</span>
-          <span className="ml-auto" />
+          <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Page sections">
+            <a href="#features" className="btn-quiet px-3 text-body-sm">Capabilities</a>
+            <a href="#how" className="btn-quiet px-3 text-body-sm">How it works</a>
+          </nav>
+          <span className="md:hidden ml-auto" />
           {user ? (
             <Link to="/app/dashboard" className="btn-primary">Open dashboard</Link>
           ) : (
@@ -186,90 +209,36 @@ export function LandingPage() {
       </header>
 
       <main id="main-content">
-        {/* HERO — the editorial entrance, then the globe runway it hands over to. */}
+        {/* HERO — copy on the left, a product snapshot on the right. Structured, not a splash. */}
         <section className="mx-auto w-full max-w-[1440px] px-4 pt-28 sm:px-6 sm:pt-32">
-          <div data-hero className="max-w-3xl">
-            <p className="text-label uppercase tracking-wide text-text-muted">{LANDING.product}</p>
-            <h1 className="editorial mt-3 text-editorial-xl text-text">{LANDING.headline}</h1>
-            <p className="mt-5 max-w-2xl text-lede text-text-secondary">{LANDING.standfirst}</p>
-            <div className="mt-7 flex flex-wrap items-center gap-2.5">
-              {user ? (
-                <Link to="/app/dashboard" className="btn-primary">Open dashboard</Link>
-              ) : (
-                <Link to="/login" className="btn-primary">
-                  Sign in <ArrowRight size={16} aria-hidden />
-                </Link>
-              )}
-              <button type="button" onClick={learnMore} className="btn-neutral">Learn more</button>
+          <div className="grid items-center gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div data-hero>
+              <p className="text-label uppercase tracking-wide text-text-muted">{LANDING.product}</p>
+              <h1 className="editorial mt-3 text-editorial-lg text-text">{LANDING.headline}</h1>
+              <p className="mt-5 max-w-xl text-lede text-text-secondary">{LANDING.standfirst}</p>
+              <div className="mt-7 flex flex-wrap items-center gap-2.5">
+                {signInCta}
+                <button type="button" onClick={() => scrollToId('features')} className="btn-neutral">
+                  See what it does
+                </button>
+              </div>
+              <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2">
+                {LANDING.heroFacts.map((f) => (
+                  <li key={f} className="flex items-center gap-1.5 text-body-sm text-text-secondary">
+                    <Check size={15} className="shrink-0 text-success-text" aria-hidden /> {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mx-auto w-full max-w-md lg:mx-0">
+              <HeroPreview />
             </div>
           </div>
         </section>
 
-        {/*
-          THE GLOBE RUNWAY. A two-screen scroll distance with the mark stuck at the centre of
-          the viewport, growing as the reader scrolls through — the growth is driven by the
-          scrollbar (scrub), so it is something the reader does, not something they wait for.
-          At rest (reduced motion, no JS) it is simply a centred image.
-        */}
-        <div data-runway className="relative h-[200vh]">
-          <div className="sticky top-0 flex h-screen items-center justify-center">
-            <img
-              data-globe
-              src={`${import.meta.env.BASE_URL}brand/bia-globe.png`}
-              alt={`${LANDING.org} globe mark`}
-              width="1200"
-              height="1148"
-              className="w-[min(56vw,540px)]"
-            />
-          </div>
-        </div>
-
-        {/* THE TAGLINE — arrives word by word as it scrolls into view. Assistive technology
-            reads the sr-only sentence; the per-word spans are presentation only. NOT aria-label
-            on the <p>: that attribute is prohibited on paragraph roles (axe aria-prohibited-attr,
-            found live on this very element). */}
-        <section className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6">
-          <p ref={taglineRef} className="editorial max-w-4xl text-editorial-lg text-text">
-            <span className="sr-only">{LANDING.tagline}</span>
-            {LANDING.tagline.split(' ').map((w, i) => (
-              // Keyed by position: a static sentence's word order IS its identity.
-              <span key={`${i}-${w}`} aria-hidden className="inline-block whitespace-pre" data-word>
-                {w}{' '}
-              </span>
-            ))}
-          </p>
-          <div data-rise className="rule-fade mt-8" />
-        </section>
-
-        {/* FEATURES — pictures that arrive on scroll and enlarge into detail on click. */}
-        <section aria-labelledby="land-features" className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6">
-          <h2 id="land-features" className="sr-only">What the system does</h2>
-          <div data-grid className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {LANDING_FEATURES.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  data-card
-                  onClick={(e) => openDialog(f, e.currentTarget)}
-                  className="card card-interactive p-5 text-left"
-                >
-                  <div className="h-32 w-full text-text-muted">
-                    <FeatureArt id={f.id} />
-                  </div>
-                  <h3 className="mt-4 text-h3 text-text">{f.title}</h3>
-                  <p className="mt-1.5 text-body-sm text-text-secondary">{f.blurb}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-body-sm text-primary-text">
-                    Read more <ArrowRight size={14} aria-hidden />
-                  </span>
-                </button>
-            ))}
-          </div>
-        </section>
-
-        {/* THE NUMBERS — authoritative counts from the Business Constitution, counting up only
-            once actually seen (CountUp mounts when the band enters the viewport). */}
-        <section aria-label="System facts" className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6">
-          <div ref={statsRef} data-rise className="card grid grid-cols-2 gap-6 p-6 sm:grid-cols-4">
+        {/* METRICS — authoritative Constitution counts, counting up once the band is seen. */}
+        <section aria-label="System at a glance" className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 sm:py-14">
+          <div ref={statsRef} data-rise className="card grid grid-cols-2 gap-6 p-6 sm:grid-cols-4 sm:p-8">
             {LANDING.stats.map((s, i) => (
               <div key={s.label}>
                 <div className="text-display text-text">
@@ -281,29 +250,79 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6">
+        {/* HOW IT WORKS — the happy-path journey as a numbered strip. */}
+        <section id="how" aria-labelledby="how-h" className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6">
+          <div data-rise>
+            <p className="text-label uppercase tracking-wide text-text-muted">The journey</p>
+            <h2 id="how-h" className="editorial mt-2 text-editorial-md text-text">How a request moves</h2>
+          </div>
+          <ol data-rise className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+            {LANDING.lifecycle.map((s, i) => (
+              <li key={s.step}>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-label text-primary-on">
+                  {i + 1}
+                </span>
+                <h3 className="mt-3 text-body-medium text-text">{s.step}</h3>
+                <p className="mt-1 text-body-sm text-text-secondary">{s.note}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* CAPABILITIES — a titled section, then cards that enlarge into detail on click. */}
+        <section id="features" aria-labelledby="features-h" className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 sm:py-14">
           <div data-rise className="max-w-2xl">
-            <h2 className="editorial text-editorial-md text-text">Ready when you are.</h2>
-            <p className="mt-3 text-body text-text-secondary">
-              Sign in with your departmental account to raise a request or work your queue.
-            </p>
-            <div className="mt-5">
-              {user ? (
-                <Link to="/app/dashboard" className="btn-primary">Open dashboard</Link>
-              ) : (
-                <Link to="/login" className="btn-primary">
-                  Sign in <ArrowRight size={16} aria-hidden />
-                </Link>
-              )}
+            <p className="text-label uppercase tracking-wide text-text-muted">{LANDING.featuresKicker}</p>
+            <h2 id="features-h" className="editorial mt-2 text-editorial-md text-text">{LANDING.featuresHeading}</h2>
+            <p className="mt-3 text-body text-text-secondary">{LANDING.featuresSubhead}</p>
+          </div>
+          <div data-grid className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {LANDING_FEATURES.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                data-card
+                onClick={(e) => openDialog(f, e.currentTarget)}
+                className="card card-interactive p-5 text-left"
+              >
+                <div className="h-32 w-full text-text-muted">
+                  <FeatureArt id={f.id} />
+                </div>
+                <h3 className="mt-4 text-h3 text-text">{f.title}</h3>
+                <p className="mt-1.5 text-body-sm text-text-secondary">{f.blurb}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-body-sm text-primary-text">
+                  Read more <ArrowRight size={14} aria-hidden />
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* CLOSING CTA — a branded band; the globe lives here, contained, not dominating. */}
+        <section className="mx-auto w-full max-w-[1440px] px-4 pb-16 sm:px-6">
+          <div data-rise className="card relative overflow-hidden bg-surface-sunken p-8 sm:p-10">
+            <div className="relative z-base max-w-xl">
+              <h2 className="editorial text-editorial-md text-text">{LANDING.ctaHeading}</h2>
+              <p className="mt-3 text-body text-text-secondary">{LANDING.ctaBody}</p>
+              <div className="mt-6">{signInCta}</div>
             </div>
+            <img
+              src={`${import.meta.env.BASE_URL}brand/bia-globe.png`}
+              alt=""
+              aria-hidden
+              width="1200"
+              height="1148"
+              className="pointer-events-none absolute -right-10 -top-8 hidden w-72 opacity-90 sm:block"
+            />
           </div>
         </section>
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-2.5 px-4 py-6 text-caption text-text-muted sm:px-6">
-          <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-3 w-3 object-contain" />
-          <span>{LANDING.org} — internal system. Authorised users only.</span>
+        <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-3 px-4 py-8 sm:px-6">
+          <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-5 w-5 object-contain" />
+          <span className="text-body-sm text-text">{LANDING.org}</span>
+          <span className="ml-auto text-caption text-text-muted">Internal system · authorised users only</span>
         </div>
       </footer>
 
