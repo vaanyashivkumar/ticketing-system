@@ -192,9 +192,16 @@ export function LandingPage() {
         className={`fixed inset-x-0 top-0 z-sticky bg-bg transition-[border-color] duration-base ease-standard ${scrolled ? 'border-b border-border' : 'border-b border-transparent'}`}
       >
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center gap-3 px-4 sm:px-6">
-          {/* REMAPPED SCALE: h-5 is 40px here (8-point tokens), not 20px. */}
-          <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-5 w-5 object-contain" />
-          <span className="text-body-medium text-text">{LANDING.org}</span>
+          {/* The organisation's full brand lockup (globe + wordmark) — the logo carries the name,
+              so it is the accessible label. Explicit box at the lockup's 3.48:1 aspect so width is
+              deterministic; a light chip in dark theme keeps the black wordmark legible. */}
+          <img
+            src={`${import.meta.env.BASE_URL}brand/bia-logo.png`}
+            alt={LANDING.org}
+            width="1400"
+            height="402"
+            className="h-[40px] w-[139px] object-contain object-left dark:rounded-md dark:bg-white dark:p-1.5"
+          />
           <nav className="ml-auto hidden items-center gap-1 md:flex" aria-label="Page sections">
             <a href="#features" className="btn-quiet px-3 text-body-sm">Capabilities</a>
             <a href="#how" className="btn-quiet px-3 text-body-sm">How it works</a>
@@ -320,8 +327,13 @@ export function LandingPage() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-3 px-4 py-8 sm:px-6">
-          <img src={`${import.meta.env.BASE_URL}brand/bia-globe.png`} alt="" width="1200" height="1148" className="h-5 w-5 object-contain" />
-          <span className="text-body-sm text-text">{LANDING.org}</span>
+          <img
+            src={`${import.meta.env.BASE_URL}brand/bia-logo.png`}
+            alt={LANDING.org}
+            width="1400"
+            height="402"
+            className="h-[30px] w-[104px] object-contain object-left dark:rounded-md dark:bg-white dark:p-1"
+          />
           <span className="ml-auto text-caption text-text-muted">Internal system · authorised users only</span>
         </div>
       </footer>
