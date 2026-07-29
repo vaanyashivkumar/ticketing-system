@@ -203,7 +203,8 @@ const DESTINATION_KPIS: KpiRowWidget = {
   title: 'Department workload',
   question: 'What is in the queue, what is unowned, and what is breaching?',
   dataScope: 'dept-incoming',
-  kpis: ['open', 'unassigned', 'assignedToMe', 'overdue', 'dueSoon', 'slaCompliance'],
+  // `completed` = inbound requests the department has resolved/closed (2026-07-29 stakeholder request).
+  kpis: ['open', 'unassigned', 'assignedToMe', 'overdue', 'dueSoon', 'slaCompliance', 'completed'],
   priority: 0,
   column: 'main',
 };
@@ -283,7 +284,8 @@ export const GOVERNANCE_WIDGETS: readonly DashboardWidget[] = [
     question: 'Where is the whole organisation breaching, and how much work is unowned?',
     dataScope: 'organisation-wide',
     requiredCapability: 'SUPER_ADMIN',
-    kpis: ['open', 'unassigned', 'overdue', 'dueSoon', 'slaCompliance', 'avgResolution'],
+    // `completed` = resolved/closed across the whole organisation (2026-07-29 stakeholder request).
+    kpis: ['open', 'unassigned', 'overdue', 'dueSoon', 'slaCompliance', 'avgResolution', 'completed'],
     priority: 100,
     column: 'main',
   },
