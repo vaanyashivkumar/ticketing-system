@@ -11,6 +11,7 @@ import {
 } from './leaveEngine';
 import type { LeaveRecord } from './leaveTypes';
 import { HR_APPROVER_ID, MD_APPROVER_ID, lineManagerFor, managerOfDepartment } from '@config/leave.config';
+import { MOCK_USERS } from '@config/mockUsers.config';
 
 const rec = (over: Partial<LeaveRecord>): LeaveRecord => ({
   id: 'l1', code: 'LV-0001', employeeId: 'u-sal', type: 'Annual',
@@ -153,6 +154,28 @@ describe('approval chain — Line manager → HR → MD, with self-approval skip
     expect(lineManagerFor(MD_APPROVER_ID)).toBeNull();
     expect(firstStageFor(MD_APPROVER_ID)).toBe('HR');
     expect(nextStageFor(MD_APPROVER_ID, 'HR')).toBeNull();
+  });
+
+  it('ALWAYS hands over from HR to the MD — every employee, no exceptions but the MD', () => {
+    // Exhaustive over the real user list rather than a sample, so adding a person cannot quietly
+    // introduce someone whose chain stops at HR. This is the hop the business cares most about:
+    // HR signing off is never the end of an application, it is the handover to final approval.
+    for (const u of MOCK_USERS) {
+      if (u.id === MD_APPROVER_ID) continue;
+      expect(nextStageFor(u.id, 'HR'), `${u.name} must go HR → MD`).toBe('MD');
+    }
+    // The MD is the SOLE exception, and a deliberate one: nobody is above them to approve it.
+    expect(nextStageFor(MD_APPROVER_ID, 'HR')).toBeNull();
+  });
+
+  it('reaches the MD from every possible starting point', () => {
+    // Both routes converge on the MD: the employee route via MANAGER, and the line manager's own
+    // route which begins at HR. Neither can terminate early.
+    expect(firstStageFor('u-fin-2')).toBe('MANAGER'); // employee route
+    expect(nextStageFor('u-fin-2', 'MANAGER')).toBe('HR');
+    expect(nextStageFor('u-fin-2', 'HR')).toBe('MD');
+    expect(firstStageFor('u-fin')).toBe('HR'); // line manager's own route
+    expect(nextStageFor('u-fin', 'HR')).toBe('MD');
   });
 
   it('treats the sysadmin as an ordinary employee now that the MD is their own identity', () => {
