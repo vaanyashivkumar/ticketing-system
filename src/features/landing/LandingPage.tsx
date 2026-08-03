@@ -179,11 +179,15 @@ export function LandingPage() {
     });
   }, []);
 
-  const signInCta = user ? (
-    <Link to="/app/dashboard" className="btn-primary">Open dashboard</Link>
-  ) : (
-    <Link to="/login" className="btn-primary">Sign in <ArrowRight size={16} aria-hidden /></Link>
-  );
+  /**
+   * There is exactly ONE sign-in control on this page, and it lives in the fixed header.
+   *
+   * The hero and the closing band each carried their own copy of it, so a visitor met the same
+   * button three times on one screen — and the header's is pinned, so it is on screen the whole
+   * way down regardless. Repeating a call to action that never leaves the viewport adds no reach,
+   * it just splits the eye between three identical primaries. Do not reintroduce one here; the
+   * page's only in-page action is "See what it does", which is a jump, not a destination.
+   */
 
   return (
     <div ref={scope} className="min-h-screen overflow-x-clip bg-bg text-text">
@@ -224,7 +228,6 @@ export function LandingPage() {
               <h1 className="editorial mt-3 text-editorial-lg text-text">{LANDING.headline}</h1>
               <p className="mt-5 max-w-xl text-lede text-text-secondary">{LANDING.standfirst}</p>
               <div className="mt-7 flex flex-wrap items-center gap-2.5">
-                {signInCta}
                 <button type="button" onClick={() => scrollToId('features')} className="btn-neutral">
                   See what it does
                 </button>
@@ -265,10 +268,40 @@ export function LandingPage() {
           </div>
           <ol data-rise className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
             {LANDING.lifecycle.map((s, i) => (
-              <li key={s.step}>
+              <li key={s.step} className="relative">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-label text-primary-on">
                   {i + 1}
                 </span>
+                {/*
+                  Connector between consecutive steps. Purely decorative — the <ol> already says
+                  these are ordered, and each step is numbered, so this is aria-hidden and adds no
+                  reading noise.
+
+                  `lg:block` ONLY, and that is the whole trick: it is the sole breakpoint where the
+                  five steps sit in one row, so "points at the next step" is true. At sm the grid is
+                  two columns, where items 2 and 4 end a row and their arrow would point off the
+                  edge at nothing; stacked on mobile a rightward arrow means nothing at all.
+
+                  Anchored to `top-4` = 32px under the 8-point remap, which is exactly half of the
+                  circle's `h-8` = 64px, so it floats on the circles' centre line rather than the
+                  text below.
+
+                  Horizontally it lands on the true midpoint BETWEEN two circle centres, and the
+                  `+56px` is derived, not tuned: each circle sits at its column's LEFT edge, so
+                  anchoring to the column's right edge leans every arrow toward the next number
+                  (measured 42px off, and worse at wider viewports because the error scales with
+                  column width). Midpoint-from-column-left is `32 + (colWidth + gap)/2`, which
+                  rearranges to `colWidth/2 + (32 + gap/2)` — so `50%` carries the column-width
+                  half and the remainder is the CONSTANT 56px: half the 64px circle plus half the
+                  48px gutter. Layout-independent, so it holds at every width the row survives.
+                */}
+                {i < LANDING.lifecycle.length - 1 && (
+                  <ArrowRight
+                    size={22}
+                    aria-hidden
+                    className="pointer-events-none absolute left-[calc(50%_+_56px)] top-4 hidden -translate-x-1/2 -translate-y-1/2 text-text-muted lg:block"
+                  />
+                )}
                 <h3 className="mt-3 text-body-medium text-text">{s.step}</h3>
                 <p className="mt-1 text-body-sm text-text-secondary">{s.note}</p>
               </li>
@@ -309,9 +342,10 @@ export function LandingPage() {
         <section className="mx-auto w-full max-w-[1440px] px-4 pb-16 sm:px-6">
           <div data-rise className="card relative overflow-hidden bg-surface-sunken p-8 sm:p-10">
             <div className="relative z-base max-w-xl">
+              {/* No button here by design — the header's sign-in is pinned and still on screen.
+                  The copy points at it rather than duplicating it. */}
               <h2 className="editorial text-editorial-md text-text">{LANDING.ctaHeading}</h2>
               <p className="mt-3 text-body text-text-secondary">{LANDING.ctaBody}</p>
-              <div className="mt-6">{signInCta}</div>
             </div>
             <img
               src={`${import.meta.env.BASE_URL}brand/bia-globe.png`}

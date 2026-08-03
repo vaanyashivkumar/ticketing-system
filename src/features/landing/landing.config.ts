@@ -54,7 +54,9 @@ export const LANDING = {
     'Every request carries an owner, a deadline and a full history — enforced by the system, not ' +
     'left to good intentions.',
   ctaHeading: 'Ready when you are.',
-  ctaBody: 'Sign in with your departmental account to raise a request or work your queue.',
+  // No button sits under this: the header's sign-in is pinned and still on screen. The copy points
+  // at that one control rather than the page carrying a third identical primary.
+  ctaBody: 'Use the sign-in at the top of the page to raise a request or work your queue.',
 } as const;
 
 export const LANDING_FEATURES: readonly LandingFeature[] = [
