@@ -104,31 +104,55 @@ describe('splitPaidUnpaid — the over-balance rule', () => {
 });
 
 describe('approval chain — Line manager → HR → MD, with self-approval skipped', () => {
-  it('starts at MANAGER for an ordinary employee', () => {
-    expect(firstStageFor('u-sal')).toBe('MANAGER'); // manager = u-adm ≠ applicant
+  // The stage-1 approver is the applicant's DEPARTMENT manager (2026-08-03), so these cases are
+  // chosen by department: FIN is managed by u-fin (James) and ADM by u-adm (Ruth); SAL/MKT/ACA/HR
+  // have no manager at all. Each of the three ways MANAGER can resolve is covered below.
+  it('starts at MANAGER when the applicant department has a manager who is not them', () => {
+    expect(firstStageFor('u-fin-2')).toBe('MANAGER'); // Sofia (FIN) → James
+    expect(firstStageFor('u-sys')).toBe('MANAGER'); // Marcus (ADM) → Ruth
+  });
+
+  it('skips MANAGER when the department has no manager, starting the chain at HR', () => {
+    // The ratified rule: no manager is not an error, it is one fewer stage.
+    expect(firstStageFor('u-sal')).toBe('HR'); // Priya — Sales has no manager
+    expect(firstStageFor('u-mkt')).toBe('HR'); // Tom — Marketing likewise
+  });
+
+  it('skips MANAGER when the applicant IS their department manager', () => {
+    expect(firstStageFor('u-fin')).toBe('HR'); // James manages Finance; he cannot approve himself
+    expect(firstStageFor('u-adm')).toBe('HR'); // Ruth manages Administration, likewise
   });
 
   it('walks MANAGER → HR → MD in order', () => {
-    expect(nextStageFor('u-sal', 'MANAGER')).toBe('HR');
-    expect(nextStageFor('u-sal', 'HR')).toBe('MD');
-    expect(nextStageFor('u-sal', 'MD')).toBeNull();
+    expect(nextStageFor('u-fin-2', 'MANAGER')).toBe('HR');
+    expect(nextStageFor('u-fin-2', 'HR')).toBe('MD');
+    expect(nextStageFor('u-fin-2', 'MD')).toBeNull();
   });
 
   it('skips a stage the applicant themselves occupies', () => {
     // HR applicant (u-hr): the HR stage is their own, so MANAGER → MD.
     expect(nextStageFor('u-hr', 'MANAGER')).toBe('MD');
-    expect(firstStageFor(HR_APPROVER_ID)).toBe('MANAGER'); // manager still applies
+    // …and with no Human Resources manager either, their chain is the MD alone.
+    expect(firstStageFor(HR_APPROVER_ID)).toBe('MD');
   });
 
-  it('auto-resolves when every stage is self-occupied (the MD applying)', () => {
-    // MD (u-sys) is their own manager and the MD; HR is Nadia. So MD → HR only.
-    expect(firstStageFor(MD_APPROVER_ID)).toBe('HR');
+  it('ends the chain early when the remaining stages are self-occupied (the MD applying)', () => {
+    // Marcus (u-sys) is the MD, so his own MD stage is skipped; Ruth manages his department.
+    expect(nextStageFor(MD_APPROVER_ID, 'HR')).toBeNull();
   });
 
   it('lets only the current-stage approver decide', () => {
-    const r = rec({ employeeId: 'u-sal', stage: 'MANAGER', status: 'Pending' });
-    expect(canDecide(r, 'u-adm')).toBe(true); // Priya's manager
+    const r = rec({ employeeId: 'u-fin-2', stage: 'MANAGER', status: 'Pending' });
+    expect(canDecide(r, 'u-fin')).toBe(true); // Sofia's manager, via the Finance department
     expect(canDecide(r, 'u-hr')).toBe(false); // HR cannot decide before the manager
-    expect(canDecide({ ...r, status: 'Approved', stage: null }, 'u-adm')).toBe(false);
+    expect(canDecide({ ...r, status: 'Approved', stage: null }, 'u-fin')).toBe(false);
+  });
+
+  it('gives a department with no manager nobody who can decide the MANAGER stage', () => {
+    // Guards the skip: if MANAGER were ever reachable for a manager-less department, the record
+    // would strand — no user resolves as its approver, so nobody could move it on.
+    const stranded = rec({ employeeId: 'u-sal', stage: 'MANAGER', status: 'Pending' });
+    expect(['u-adm', 'u-hr', 'u-sys', 'u-fin'].some((id) => canDecide(stranded, id))).toBe(false);
+    expect(firstStageFor('u-sal')).not.toBe('MANAGER');
   });
 });
