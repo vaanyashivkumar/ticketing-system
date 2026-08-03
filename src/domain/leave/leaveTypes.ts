@@ -22,6 +22,15 @@ export interface LeaveDecision {
 
 export interface LeaveRecord {
   readonly id: string;
+  /**
+   * `LV-0001` — the human reference for this application.
+   *
+   * It exists because the approval chain notifies people, and the notification template's
+   * `compose` takes a code and an actor and NOTHING else. That signature is deliberate: a leave
+   * reason is often a medical or family circumstance, and it must never be broadcast in a preview
+   * that fans out to three approvers. The code is what a notification is allowed to name instead.
+   */
+  readonly code: string;
   readonly employeeId: string;
   readonly type: LeaveTypeName;
   /** ISO dates (YYYY-MM-DD), inclusive. */

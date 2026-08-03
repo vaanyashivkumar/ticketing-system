@@ -158,7 +158,10 @@ function ApprovalQueue({ userId }: { userId: string }) {
         {pending.map((r) => (
           <li key={r.id} className="rounded-md border border-border p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="text-body-medium text-text">{nameOf(r.employeeId)}</span>
+              <span className="text-body-medium text-text">
+                <span className="mr-2 font-mono text-body-sm text-primary-text">{r.code}</span>
+                {nameOf(r.employeeId)}
+              </span>
               <span className="text-caption text-text-muted">applied {fmtDate(r.createdAt.slice(0, 10))}</span>
             </div>
             <div className="mt-1 text-body-sm text-text-secondary">
@@ -211,6 +214,7 @@ function Ledger({ userId }: { userId: string }) {
           <table className="w-full">
             <thead>
               <tr>
+                <th className="th">Reference</th>
                 <th className="th">Type</th>
                 <th className="th">Dates</th>
                 <th className="th td-num">Days</th>
@@ -224,6 +228,8 @@ function Ledger({ userId }: { userId: string }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="row-hover">
+                  {/* The reference every notification about this application names. */}
+                  <td className="td whitespace-nowrap font-mono text-body-sm text-primary-text">{r.code}</td>
                   <td className="td">{r.type}</td>
                   <td className="td whitespace-nowrap">{fmtDate(r.startDate)} → {fmtDate(r.endDate)}</td>
                   <td className="td td-num">{r.requestedDays}</td>

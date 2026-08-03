@@ -133,8 +133,19 @@ export function nextStageFor(applicantId: string, current: ApprovalStage): Appro
   return firstStageFor(applicantId, APPROVAL_STAGES[idx + 1]!);
 }
 
-/** True when `userId` is the approver the given record is currently waiting on. */
+/**
+ * True when `userId` is the approver the given record is currently waiting on.
+ *
+ * THE SELF-APPROVAL GUARD IS ITS OWN LINE, not a consequence of routing. Until 2026-08-03 the
+ * claim "self-approval is impossible" was true only because `firstStageFor` never PLACED anyone on
+ * a stage they occupied — this function itself would happily have agreed that Priya may approve
+ * Priya. That was survivable while one person was self-managed; per-department managers made four
+ * of six departments self-managed, and a record already sitting on a MANAGER stage (a stale row, a
+ * fixture, a manager reassigned while an application was in flight) becomes self-approvable.
+ * Routing decides where an application GOES; this decides who may act, and it must not delegate.
+ */
 export function canDecide(record: LeaveRecord, userId: string): boolean {
   if (record.status !== 'Pending' || record.stage === null) return false;
+  if (userId === record.employeeId) return false;
   return approverForStage(record.stage, record.employeeId) === userId;
 }

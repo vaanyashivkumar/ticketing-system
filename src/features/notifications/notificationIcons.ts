@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { UserCheck, MessageSquare, HelpCircle, CheckCircle2, XCircle, Archive, RotateCcw, Ban, Send, Flag, AlarmClock } from 'lucide-react';
+import { UserCheck, MessageSquare, HelpCircle, CheckCircle2, XCircle, Archive, RotateCcw, Ban, Send, Flag, AlarmClock, CalendarCheck, CalendarClock, CalendarX } from 'lucide-react';
 import type { WorkflowEventType } from '@config/notifications.config';
 
 /**
@@ -32,4 +32,8 @@ export const NOTIFICATION_ICON: Record<WorkflowEventType, LucideIcon> = {
   PriorityChanged: Flag,
   CommentAdded: MessageSquare,
   AutoCloseWarning: AlarmClock,
+  LeaveAwaitingApproval: CalendarClock,
+  LeaveApproved: CalendarCheck,
+  LeaveRejected: CalendarX,
+  LeaveCancelled: Ban,
 };

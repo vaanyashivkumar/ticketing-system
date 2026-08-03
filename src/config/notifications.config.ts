@@ -36,7 +36,27 @@ export type WorkflowEventType =
    * existed in no vocabulary anywhere, so the centre rendered it with no category, no priority
    * word and, worst, no action label: the one thing B08 requires every notification to answer.
    */
-  | 'AutoCloseWarning';
+  | 'AutoCloseWarning'
+  /**
+   * THE LEAVE APPROVAL CHAIN (2026-08-03). Leave is the one ratified approval sub-workflow, and
+   * until now it was entirely SILENT: an application reached an approver's queue with nobody told,
+   * and a decision was recorded with nobody told either. The applicant had to keep re-opening
+   * their ledger and the approver had to happen to look.
+   *
+   * `LeaveAwaitingApproval` travels FORWARD, to the one person whose stage it has reached.
+   * `LeaveApproved` / `LeaveRejected` travel BACK down the path the application actually took —
+   * every approver it passed through, plus the applicant — so a line manager who signed something
+   * off learns what finally became of it. A stage it never reached is never told, because it was
+   * never part of that path.
+   *
+   * These carry the leave CODE and never the reason. That is the whole point of the `compose`
+   * signature: people put medical and family circumstances in a leave reason, and it must not be
+   * broadcast to a chain of three approvers in a preview.
+   */
+  | 'LeaveAwaitingApproval'
+  | 'LeaveApproved'
+  | 'LeaveRejected'
+  | 'LeaveCancelled';
 
 /**
  * NOTIFICATION TEMPLATE CATALOGUE (B08 §Notification Template Model).
@@ -64,7 +84,9 @@ export type NotificationCategory =
   | 'Comment'
   | 'Information'
   | 'Resolution'
-  | 'Priority';
+  | 'Priority'
+  /** The leave approval chain — its own band, so a filter can separate it from ticket traffic. */
+  | 'Leave';
 
 /**
  * B08 asks for Low / Normal / High / Critical.
@@ -99,6 +121,7 @@ export const NOTIFICATION_CATEGORIES: Readonly<Record<NotificationCategory, Noti
   Information: { label: 'Information', description: 'A question was asked, or answered.', badgeClass: 'bg-warning-bg text-warning-text' },
   Resolution: { label: 'Resolution', description: 'Work was finished, accepted or contested.', badgeClass: 'bg-success-bg text-success-text' },
   Priority: { label: 'Priority', description: 'Urgency was re-graded, which moves the deadline.', badgeClass: 'bg-warning-bg text-warning-text' },
+  Leave: { label: 'Leave', description: 'A leave application moved along, or came back, the approval chain.', badgeClass: 'bg-info-bg text-info-text' },
 };
 
 export interface NotificationTemplate {
@@ -226,6 +249,47 @@ const TEMPLATES: readonly NotificationTemplate[] = [
     compose: ({ code }) => `${code} closes automatically soon unless you reopen it`,
     actionLabel: 'Accept or reopen',
     recipients: 'The requester only — they are the one who can still act.',
+  },
+  /**
+   * ── THE LEAVE CHAIN ───────────────────────────────────────────────────────────────────────
+   * `code` here is the leave code (`LV-0001`), minted the way ticket codes are, for exactly the
+   * reason this signature exists: an approval chain needs something to name, and the only other
+   * candidate was the reason field.
+   */
+  {
+    event: 'LeaveAwaitingApproval',
+    category: 'Leave',
+    priority: 'high',
+    // Reads correctly at both ends of the hop: on application `actorName` is the employee, and on
+    // an advance it is the approver who has just signed it off and handed it on.
+    compose: ({ code, actorName }) => `${code} needs your approval — passed to you by ${actorName}`,
+    actionLabel: 'Review it',
+    recipients: 'The single approver whose stage the application has reached.',
+  },
+  {
+    event: 'LeaveApproved',
+    category: 'Leave',
+    priority: 'normal',
+    compose: ({ code, actorName }) => `${code} was approved — ${actorName} gave the final sign-off`,
+    actionLabel: 'View the record',
+    recipients: 'The applicant, and every approver the application passed through.',
+  },
+  {
+    event: 'LeaveRejected',
+    category: 'Leave',
+    priority: 'high',
+    // Mirrors the ticket-rejection wording: say that there IS a reason, never what it says.
+    compose: ({ code, actorName }) => `${code} was rejected by ${actorName} — the reason is on the record`,
+    actionLabel: 'View the record',
+    recipients: 'The applicant, and every approver it had already passed through.',
+  },
+  {
+    event: 'LeaveCancelled',
+    category: 'Leave',
+    priority: 'normal',
+    compose: ({ code, actorName }) => `${code} was withdrawn by ${actorName}`,
+    actionLabel: 'No action needed',
+    recipients: 'The approver who was holding it, and anyone who had already signed it off.',
   },
 ];
 

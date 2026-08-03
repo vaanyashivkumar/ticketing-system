@@ -45,6 +45,10 @@ const ALL_EVENTS: Record<WorkflowEventType, true> = {
   PriorityChanged: true,
   CommentAdded: true,
   AutoCloseWarning: true,
+  LeaveAwaitingApproval: true,
+  LeaveApproved: true,
+  LeaveRejected: true,
+  LeaveCancelled: true,
 };
 
 describe('template catalogue', () => {

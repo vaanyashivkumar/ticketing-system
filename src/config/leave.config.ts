@@ -70,12 +70,12 @@ export const MD_APPROVER_ID = 'u-sys'; // Marcus Vane
  * (BUSINESS_DOMAIN_MODEL §2.3 — no stored role, no role-keyed permission table).
  */
 export const DEPARTMENT_MANAGERS: Readonly<Record<DepartmentCode, string | null>> = {
-  SAL: null, // Priya is the only member — no internal manager, so leave starts at HR
-  MKT: null, // Tom, likewise
-  ACA: null, // Elena, likewise
-  HR: null, // Nadia, likewise (and her own HR stage then auto-skips to MD)
-  FIN: 'u-fin', // James Carrow — manages the two-person Finance hub (Sofia reports to him)
-  ADM: 'u-adm', // Ruth Bello — manages Administration (Marcus reports to her)
+  SAL: 'u-sal', // Priya Raman
+  MKT: 'u-mkt', // Tom Whitfield
+  ACA: 'u-aca', // Dr Elena Marsh
+  HR: 'u-hr', // Nadia Okonkwo
+  FIN: 'u-fin', // James Carrow — Sofia Nowak reports to him
+  ADM: 'u-adm', // Ruth Bello — Marcus Vane reports to her
 };
 
 interface LeaveEmployee {

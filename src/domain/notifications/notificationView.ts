@@ -104,8 +104,12 @@ export function groupNotifications(
  * would silently swallow the second. What it does prevent is the same event being published twice
  * from a retry or a double render, which produces an identical timestamp.
  */
-export const deduplicationKey = (n: Pick<AppNotification, 'type' | 'ticketId' | 'recipientId' | 'at'>): string =>
-  `${n.type}:${n.ticketId}:${n.recipientId}:${n.at}`;
+export const deduplicationKey = (
+  n: Pick<AppNotification, 'type' | 'ticketId' | 'recipientId' | 'at'> & { readonly leaveId?: string },
+): string =>
+  // A leave notification carries no ticket id, so the subject falls back to the leave id. Without
+  // this every leave notification would key on the same empty string and collapse into one.
+  `${n.type}:${n.ticketId || n.leaveId || ''}:${n.recipientId}:${n.at}`;
 
 /** Drop exact duplicates, keeping the first occurrence and the original order. */
 export function deduplicate(notifications: readonly AppNotification[]): readonly AppNotification[] {

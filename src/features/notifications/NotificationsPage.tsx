@@ -206,7 +206,7 @@ export function NotificationsPage() {
               return (
                 <li key={n.id} className={!n.read ? 'bg-info-bg/40' : ''}>
                   <Link
-                    to={`/app/tickets/${n.ticketId}`}
+                    to={n.leaveId ? '/app/leave' : `/app/tickets/${n.ticketId}`}
                     className="row-hover flex items-start gap-3 border-b border-border px-4 py-3 last:border-0"
                   >
                     <Icon size={16} className="mt-0.5 shrink-0 text-text-muted" aria-hidden />

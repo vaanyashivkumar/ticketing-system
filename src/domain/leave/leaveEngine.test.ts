@@ -10,10 +10,10 @@ import {
   canDecide,
 } from './leaveEngine';
 import type { LeaveRecord } from './leaveTypes';
-import { HR_APPROVER_ID, MD_APPROVER_ID } from '@config/leave.config';
+import { HR_APPROVER_ID, MD_APPROVER_ID, lineManagerFor, managerOfDepartment } from '@config/leave.config';
 
 const rec = (over: Partial<LeaveRecord>): LeaveRecord => ({
-  id: 'l1', employeeId: 'u-sal', type: 'Annual',
+  id: 'l1', code: 'LV-0001', employeeId: 'u-sal', type: 'Annual',
   startDate: '2026-01-10', endDate: '2026-01-12', requestedDays: 3,
   paidDays: 3, unpaidDays: 0, status: 'Pending', stage: 'MANAGER',
   history: [], createdAt: '2026-01-01T00:00:00.000Z', ...over,
@@ -112,15 +112,25 @@ describe('approval chain — Line manager → HR → MD, with self-approval skip
     expect(firstStageFor('u-sys')).toBe('MANAGER'); // Marcus (ADM) → Ruth
   });
 
-  it('skips MANAGER when the department has no manager, starting the chain at HR', () => {
-    // The ratified rule: no manager is not an error, it is one fewer stage.
-    expect(firstStageFor('u-sal')).toBe('HR'); // Priya — Sales has no manager
-    expect(firstStageFor('u-mkt')).toBe('HR'); // Tom — Marketing likewise
+  it('sends a LINE MANAGER’S OWN application straight to HR, then the MD', () => {
+    // The stakeholder's second route (2026-08-03): when the line manager themselves applies there
+    // is nobody above them inside their department, so the chain must start at HR and go on to the
+    // MD. It needs no separate branch — the self-approval skip already expresses it exactly, which
+    // is why this is a test rather than a feature.
+    expect(firstStageFor('u-sal')).toBe('HR'); // Priya manages Sales
+    expect(firstStageFor('u-mkt')).toBe('HR'); // Tom manages Marketing
+    expect(firstStageFor('u-fin')).toBe('HR'); // James manages Finance
+    expect(firstStageFor('u-adm')).toBe('HR'); // Ruth manages Administration
+    // …and HR's sign-off then hands it to the MD, completing the two-stage manager route.
+    expect(nextStageFor('u-sal', 'HR')).toBe('MD');
   });
 
-  it('skips MANAGER when the applicant IS their department manager', () => {
-    expect(firstStageFor('u-fin')).toBe('HR'); // James manages Finance; he cannot approve himself
-    expect(firstStageFor('u-adm')).toBe('HR'); // Ruth manages Administration, likewise
+  it('treats an unknown employee as having no manager rather than guessing one', () => {
+    // Every department has a manager today, but `null` is still a representable state and the
+    // engine must not invent an approver for someone it cannot place. A wrong approver is worse
+    // than one fewer stage: it would route a colleague's leave to a stranger.
+    expect(lineManagerFor('nobody-at-all')).toBeNull();
+    expect(managerOfDepartment(undefined)).toBeNull();
   });
 
   it('walks MANAGER → HR → MD in order', () => {
@@ -148,11 +158,13 @@ describe('approval chain — Line manager → HR → MD, with self-approval skip
     expect(canDecide({ ...r, status: 'Approved', stage: null }, 'u-fin')).toBe(false);
   });
 
-  it('gives a department with no manager nobody who can decide the MANAGER stage', () => {
-    // Guards the skip: if MANAGER were ever reachable for a manager-less department, the record
-    // would strand — no user resolves as its approver, so nobody could move it on.
+  it('never routes a self-managed applicant to a MANAGER stage they alone could decide', () => {
+    // The strand guard. Priya IS the Sales manager, so a MANAGER stage on her own application
+    // resolves to HERSELF — and `canDecide` refuses self-approval, leaving a row nobody at all can
+    // move. The engine must therefore never PUT her there, which is what the second assertion pins.
     const stranded = rec({ employeeId: 'u-sal', stage: 'MANAGER', status: 'Pending' });
-    expect(['u-adm', 'u-hr', 'u-sys', 'u-fin'].some((id) => canDecide(stranded, id))).toBe(false);
+    const everyone = ['u-sal', 'u-adm', 'u-hr', 'u-sys', 'u-fin', 'u-fin-2'];
+    expect(everyone.some((id) => canDecide(stranded, id))).toBe(false);
     expect(firstStageFor('u-sal')).not.toBe('MANAGER');
   });
 });

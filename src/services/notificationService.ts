@@ -20,14 +20,37 @@ export interface WorkflowEvent {
   readonly actorId: string;
 }
 
+/**
+ * A leave-chain event. Separate from `WorkflowEvent` because a leave application is not a ticket
+ * and never becomes one — giving it a fake `Ticket` to reuse the pipeline would put a second,
+ * lying shape into the store.
+ *
+ * `travelled` is the approvers it has already passed through, and it is what makes the outcome
+ * come back "the very same path": a decision is announced to those people and to the applicant,
+ * never to a stage the application never reached.
+ */
+export interface LeaveNotificationEvent {
+  readonly type: 'LeaveAwaitingApproval' | 'LeaveApproved' | 'LeaveRejected' | 'LeaveCancelled';
+  readonly leaveId: string;
+  readonly code: string;
+  readonly employeeId: string;
+  readonly approverId: string | null;
+  readonly travelled: readonly string[];
+  readonly actorId: string;
+}
+
 export interface AppNotification {
   readonly id: string;
   readonly recipientId: string;
+  /** The ticket this is about. Empty for a leave notification — see `leaveId`. */
   readonly ticketId: string;
+  /** `FIN-0001` or `LV-0001`: whichever code the message names. */
   readonly ticketCode: string;
   readonly type: WorkflowEventType;
   readonly message: string;
   readonly at: string;
+  /** Set instead of `ticketId` when this is about a leave application. Exactly one is ever set. */
+  readonly leaveId?: string;
   read: boolean;
 }
 
@@ -116,6 +139,47 @@ export const NotificationService = {
       at: nowIso(),
       read: false,
     }));
+    if (notes.length) {
+      const all = StorageAdapter.read<AppNotification[]>(DOMAIN) ?? [];
+      StorageAdapter.write(DOMAIN, [...all, ...notes].slice(-NOTIFICATION_CAP));
+    }
+  },
+
+  /**
+   * The leave chain's publish point — forward to the waiting approver, backward along the path.
+   *
+   * Recipient resolution mirrors the API's `leaveRecipients` decision for decision, but is not
+   * shared with it: the rule is the same, the data source is not (mock config here, Postgres with
+   * an `active` filter there). There is no shared implementation to have, only a shared decision.
+   *
+   * NO department fan-out anywhere in here, unlike a ticket. A leave application is between one
+   * person and their approval chain; sending it to a whole department would be a privacy leak
+   * wearing a notification's clothes.
+   */
+  publishLeave(evt: LeaveNotificationEvent): void {
+    const back = [...evt.travelled].reverse();
+    const to =
+      evt.type === 'LeaveAwaitingApproval'
+        ? (evt.approverId ? [evt.approverId] : [])
+        : evt.type === 'LeaveCancelled'
+          ? [...(evt.approverId ? [evt.approverId] : []), ...back]
+          : [...back, evt.employeeId];
+
+    const actorName = MOCK_USERS.find((u) => u.id === evt.actorId)?.name ?? 'Someone';
+    const notes = [...new Set(to)]
+      .filter((id) => id !== evt.actorId) // author suppression, the same rule tickets follow
+      .map<AppNotification>((recipientId) => ({
+        id: newId('ntf'),
+        recipientId,
+        ticketId: '',
+        ticketCode: evt.code,
+        leaveId: evt.leaveId,
+        type: evt.type,
+        message: composeNotificationMessage(evt.type, { code: evt.code, actorName }),
+        at: nowIso(),
+        read: false,
+      }));
+
     if (notes.length) {
       const all = StorageAdapter.read<AppNotification[]>(DOMAIN) ?? [];
       StorageAdapter.write(DOMAIN, [...all, ...notes].slice(-NOTIFICATION_CAP));
