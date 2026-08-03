@@ -52,7 +52,14 @@ export const STAGE_LABEL: Readonly<Record<ApprovalStage, string>> = {
  * manager is PER DEPARTMENT (below), resolved from the applicant's own department at read time.
  */
 export const HR_APPROVER_ID = 'u-hr'; // Nadia Okonkwo
-export const MD_APPROVER_ID = 'u-sys'; // Marcus Vane
+/**
+ * Rowan Ashcroft — the Managing Director, their own identity since 2026-08-03.
+ *
+ * This pointed at Marcus Vane (`u-sys`), which made the System Administrator the final approver of
+ * every leave application in the company. Separating them means the account that governs the
+ * software is no longer the account that runs the business.
+ */
+export const MD_APPROVER_ID = 'u-md';
 
 /**
  * ── PER-DEPARTMENT LINE MANAGERS (stakeholder decision, 2026-08-03). ──────────────────────────
@@ -98,6 +105,7 @@ export const LEAVE_EMPLOYEES: Readonly<Record<string, LeaveEmployee>> = {
   'u-fin-2': { joinDate: '2024-02-05' }, // Sofia Nowak
   'u-adm': { joinDate: '2019-05-06' }, // Ruth Bello
   'u-sys': { joinDate: '2018-04-02' }, // Marcus Vane
+  'u-md': { joinDate: '2017-01-09' }, // Rowan Ashcroft (MD — longest service, as you'd expect)
 };
 
 /** The line manager of a department, or null when it has none (the chain then starts at HR). */
@@ -110,8 +118,14 @@ export function managerOfDepartment(code: DepartmentCode | null | undefined): st
  * manager OR the user is unknown (defensive — an unknown user gets no MANAGER stage, never a
  * wrong one). The department comes from MOCK_USERS, which is the identity source in localStorage
  * mode and the list the API seeds from, so both modes resolve the same manager.
+ *
+ * THE MD HAS NO LINE MANAGER, and that is a business fact rather than missing data: there is
+ * nobody above the Managing Director. Without this they would inherit their department's manager
+ * and the head of the company would be sending leave upward to someone who reports to them.
+ * Their chain is therefore HR alone — the MD stage self-skips (stakeholder, 2026-08-03).
  */
 export function lineManagerFor(userId: string): string | null {
+  if (userId === MD_APPROVER_ID) return null;
   return managerOfDepartment(MOCK_USERS.find((u) => u.id === userId)?.departmentCode);
 }
 

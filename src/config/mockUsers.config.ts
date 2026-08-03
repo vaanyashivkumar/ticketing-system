@@ -60,6 +60,24 @@ export const MOCK_USERS: readonly User[] = [
   // the only department where "the assignee is unavailable" is a routine reality — and until now
   // the seeded data could not express it. See the header note before adding more.
   mk('u-fin-2', 'Sofia Nowak', 'sofia.nowak@demo.test', 'FIN', 'SN'),
+
+  /**
+   * (A) STAKEHOLDER-RATIFIED, 2026-08-03 — the Managing Director as their OWN identity.
+   *
+   * Until now `MD_APPROVER_ID` pointed at Marcus Vane, so the final approver of every leave
+   * application in the company was the account labelled "System Administrator". Governing the
+   * software and running the business were one login. Worse, because Marcus sits in
+   * Administration and Ruth manages it, the MD's own leave routed UPWARD to a subordinate.
+   *
+   * Deliberately holds NO capabilities. The MD is an executive, not an operator: they approve at
+   * the top of the leave chain and otherwise use the system as any employee does. `SUPER_ADMIN`
+   * stays with Marcus, whose job it actually describes. Placed in Administration because the
+   * Constitution fixes the six departments and every user must belong to one — the MD is
+   * department-agnostic in intent, which the "no line manager" rule in leave.config expresses.
+   *
+   * Not in USER_PERSONAS.md and carries no behaviour model: do not cite it as canonical.
+   */
+  mk('u-md', 'Rowan Ashcroft', 'rowan.ashcroft@demo.test', 'ADM', 'RA'),
 ];
 
 export function mockUserById(id: string): User | undefined {

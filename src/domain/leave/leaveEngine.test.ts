@@ -146,9 +146,21 @@ describe('approval chain — Line manager → HR → MD, with self-approval skip
     expect(firstStageFor(HR_APPROVER_ID)).toBe('MD');
   });
 
-  it('ends the chain early when the remaining stages are self-occupied (the MD applying)', () => {
-    // Marcus (u-sys) is the MD, so his own MD stage is skipped; Ruth manages his department.
+  it('sends the MD’s OWN application to HR and nowhere else', () => {
+    // Nobody is above the Managing Director, so there is no MANAGER stage to run — and their own
+    // MD stage self-skips. HR alone signs it off (stakeholder, 2026-08-03). Asserting BOTH ends
+    // matters: the first line proves the chain starts at HR, the second that it stops after.
+    expect(lineManagerFor(MD_APPROVER_ID)).toBeNull();
+    expect(firstStageFor(MD_APPROVER_ID)).toBe('HR');
     expect(nextStageFor(MD_APPROVER_ID, 'HR')).toBeNull();
+  });
+
+  it('treats the sysadmin as an ordinary employee now that the MD is their own identity', () => {
+    // Marcus used to BE the MD, which made the System Administrator the company's final approver.
+    // He is now just an Administration member: Ruth manages him, then HR, then the real MD.
+    expect(MD_APPROVER_ID).not.toBe('u-sys');
+    expect(firstStageFor('u-sys')).toBe('MANAGER');
+    expect(nextStageFor('u-sys', 'HR')).toBe('MD');
   });
 
   it('lets only the current-stage approver decide', () => {

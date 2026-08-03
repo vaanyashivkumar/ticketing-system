@@ -18,7 +18,7 @@ const CHAIN = {
   employee: 'u-fin-2', // Sofia Nowak (Finance)
   manager: 'u-fin', // James Carrow, her department's line manager
   hr: 'u-hr', // Nadia Okonkwo
-  md: 'u-sys', // Marcus Vane
+  md: 'u-md', // Rowan Ashcroft, the Managing Director
 };
 
 const notifiedBy = (userId: string) =>
