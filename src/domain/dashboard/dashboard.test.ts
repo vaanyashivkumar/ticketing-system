@@ -102,7 +102,7 @@ describe('data scope narrows, never widens', () => {
   it('refuses the organisation scope to anyone without the capability', () => {
     expect(isScopeAvailable(sal, 'organisation-wide')).toBe(false);
     expect(isScopeAvailable(session('ADM'), 'organisation-wide')).toBe(false);
-    expect(isScopeAvailable(session('ADM', 'u-susrita', ['SUPER_ADMIN']), 'organisation-wide')).toBe(true);
+    expect(isScopeAvailable(session('ADM', 'u-raja', ['SUPER_ADMIN']), 'organisation-wide')).toBe(true);
     // Capability, not department: a sysadmin anywhere holds it (OQ-02 leaves the grant open).
     expect(isScopeAvailable(session('FIN', 'u-f', ['SUPER_ADMIN']), 'organisation-wide')).toBe(true);
   });
@@ -153,7 +153,7 @@ describe('the resolver decides visibility, never the JSX', () => {
   it('gates governance on the CAPABILITY, never on the department name', () => {
     // BR-064/BR-069, and OQ-02 leaves open whether every Administration user holds it.
     expect(resolveDashboard(session('ADM')).hasGovernance).toBe(false);
-    expect(resolveDashboard(session('ADM', 'u-susrita', ['SUPER_ADMIN'])).hasGovernance).toBe(true);
+    expect(resolveDashboard(session('ADM', 'u-raja', ['SUPER_ADMIN'])).hasGovernance).toBe(true);
     expect(resolveDashboard(session('FIN', 'u-f', ['SUPER_ADMIN'])).hasGovernance).toBe(true);
   });
 

@@ -47,17 +47,33 @@ function mk(
 }
 
 export const MOCK_USERS: readonly User[] = [
-  // ── Managing Directors ──────────────────────────────────────────────────────────────────────
-  // Placed in Administration because every user needs a department and Administration governs
-  // (ratified R4). They are department-agnostic in intent, which the "MD has no line manager"
-  // rule in leave.config is what actually expresses.
-  mk('u-raja', 'Raja', 'raja@demo.test', 'ADM', 'RJ'),
-  mk('u-maha', 'Maha', 'maha@demo.test', 'ADM', 'MH'),
+  /**
+   * ── Managing Directors ──────────────────────────────────────────────────────────────────────
+   * THEY HOLD `SUPER_ADMIN`, as the highest authority in the business (stakeholder, 2026-08-04).
+   *
+   * It was briefly given to Susrita on the reasoning that ratified R4 puts governance with the
+   * Administration DEPARTMENT — but that read her job TITLE, "Administrative Executive", as if it
+   * were authority. It is not, and this file's own rule says so: a title grants nothing. R4 is
+   * still honoured, because the MDs sit in Administration too.
+   *
+   * The 2026-08-03 decision to separate the MD from the system administrator held while a
+   * dedicated sysadmin existed (Marcus Vane). This organisation names none, and the alternative
+   * was leaving the capability with someone junior to the people it governs.
+   *
+   * Placed in Administration because every user needs a department. They are department-agnostic
+   * in intent, which the "an MD has no line manager" rule in leave.config actually expresses.
+   */
+  mk('u-raja', 'Raja', 'raja@demo.test', 'ADM', 'RJ', true),
+  mk('u-maha', 'Maha', 'maha@demo.test', 'ADM', 'MH', true),
 
-  // ── Administration ──────────────────────────────────────────────────────────────────────────
-  // Susrita holds SUPER_ADMIN: no system administrator was named in the org chart, and ratified R4
-  // puts governance with Administration rather than with seniority. Moving it is one flag here.
-  mk('u-susrita', 'Susrita', 'susrita@demo.test', 'ADM', 'SU', true),
+  /**
+   * ── Administration ──────────────────────────────────────────────────────────────────────────
+   * Susrita is an ORDINARY EMPLOYEE and deliberately holds no capability. She supports every
+   * department, which is why she sits in Administration — but supporting them is not governing
+   * them, and it grants no sight of their work. Without `SUPER_ADMIN` her report and dashboard
+   * scope is `own`, so she sees Administration's own tickets and nobody else's.
+   */
+  mk('u-susrita', 'Susrita', 'susrita@demo.test', 'ADM', 'SU'),
 
   // ── Digital Marketing ───────────────────────────────────────────────────────────────────────
   mk('u-balu', 'Balu', 'balu@demo.test', 'MKT', 'BL'),

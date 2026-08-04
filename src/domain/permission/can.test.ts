@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { canStatic, canOnTicket, resolveStaticPermissions } from './can';
 import type { Session, TicketAuthView, User } from '@domain/types/auth.types';
 import { DEPARTMENTS } from '@config/departments.config';
+import { MOCK_USERS } from '@config/mockUsers.config';
+import { scopeFor } from '@domain/dashboard/scope';
 
 /**
  * Binding-rule tests for the Permission Engine. These encode the Business Constitution:
@@ -61,7 +63,7 @@ describe('Permission Engine — ticket-scoped (route-derived)', () => {
   it('VIEW: source, destination and sysadmin only — never a third department', () => {
     expect(canOnTicket(mkSession('SAL', 'u-sales'), 'VIEW_TICKET', ticket())).toBe(true); // source
     expect(canOnTicket(mkSession('FIN', 'u-raza'), 'VIEW_TICKET', ticket())).toBe(true); // destination
-    expect(canOnTicket(mkSession('ADM', 'u-susrita', true), 'VIEW_TICKET', ticket())).toBe(true); // sysadmin
+    expect(canOnTicket(mkSession('ADM', 'u-raja', true), 'VIEW_TICKET', ticket())).toBe(true); // sysadmin
     // Third party — MUST be denied
     expect(canOnTicket(mkSession('MKT', 'u-balu'), 'VIEW_TICKET', ticket())).toBe(false);
     expect(canOnTicket(mkSession('HR', 'u-sneha'), 'VIEW_TICKET', ticket())).toBe(false);
@@ -132,7 +134,7 @@ describe('Permission Engine — draft privacy (D09-1)', () => {
   const creator = mkSession('SAL', 'u-sales');
   const sameDeptColleague = mkSession('SAL', 'u-sales-2');
   const destination = mkSession('FIN', 'u-raza');
-  const sysadmin = mkSession('ADM', 'u-susrita', true);
+  const sysadmin = mkSession('ADM', 'u-raja', true);
 
   it('the creator can view their own draft', () => {
     expect(canOnTicket(creator, 'VIEW_TICKET', draft)).toBe(true);
@@ -158,5 +160,54 @@ describe('Permission Engine — draft privacy (D09-1)', () => {
   it('the destination CAN view the same ticket once it is submitted — the fix is scoped to Draft', () => {
     expect(canOnTicket(destination, 'VIEW_TICKET', ticket({ status: 'Submitted' }))).toBe(true);
     expect(canOnTicket(destination, 'VIEW_TICKET', ticket({ status: 'InProgress' }))).toBe(true);
+  });
+});
+
+/**
+ * WHO GOVERNS THE SYSTEM — asserted against the REAL identities, not a synthetic session.
+ *
+ * This exists because the capability was briefly given to the wrong person by reading a job TITLE
+ * as if it were authority: "Administrative Executive" sounded like governance, and Administration
+ * is the governing department (ratified R4), so it looked right. It was not — a title grants
+ * nothing here, and it left the highest access with someone junior to the people it governs.
+ *
+ * Asserting the actual holders is the only version of this test that could have caught that.
+ * `canStatic(mkSession(...))` cannot: it is handed the answer.
+ */
+describe('who holds SUPER_ADMIN in the real organisation', () => {
+  const sessionFor = (id: string): Session => ({
+    user: MOCK_USERS.find((u) => u.id === id)!,
+    authenticatedAt: new Date().toISOString(),
+  });
+
+  it('is the two Managing Directors, and nobody else', () => {
+    const holders = MOCK_USERS
+      .filter((u) => u.role.capabilities.includes('SUPER_ADMIN'))
+      .map((u) => u.id)
+      .sort();
+    expect(holders).toEqual(['u-maha', 'u-raja']);
+  });
+
+  it('leaves the Administrative Executive on base rights — she raises tickets, she does not govern', () => {
+    const susrita = sessionFor('u-susrita');
+    expect(susrita.user.role.capabilities).toEqual([]);
+    // She can do her job…
+    expect(canStatic(susrita, 'CREATE_TICKET')).toBe(true);
+    expect(canStatic(susrita, 'VIEW_MY_TICKETS')).toBe(true);
+    // …and governs nothing.
+    for (const admin of ['MANAGE_USERS', 'MANAGE_SLA', 'VIEW_AUDIT_LOGS', 'SYSTEM_CONFIGURATION'] as const) {
+      expect(canStatic(susrita, admin), admin).toBe(false);
+    }
+    // The one that answers "can she see other people's reports": scope, not the page itself.
+    // VIEW_REPORTS is a base right for everyone; SUPER_ADMIN is what widens the DATA to the whole
+    // organisation. Without it she is clamped to her own department.
+    expect(scopeFor(susrita)).toBe('own');
+  });
+
+  it('gives the Managing Directors the organisation-wide view instead', () => {
+    for (const md of ['u-raja', 'u-maha']) {
+      expect(scopeFor(sessionFor(md)), md).toBe('global');
+      expect(canStatic(sessionFor(md), 'VIEW_AUDIT_LOGS'), md).toBe(true);
+    }
   });
 });
