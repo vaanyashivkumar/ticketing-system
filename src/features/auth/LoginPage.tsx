@@ -89,7 +89,14 @@ export function LoginPage() {
       <div
         ref={panel}
         aria-hidden
-        className="relative hidden overflow-hidden bg-surface-sunken px-10 py-12 lg:flex lg:flex-col lg:justify-between xl:px-16"
+        /*
+          NOT `justify-between`. With three children — logo, editorial block, build note — that
+          spread them across the whole panel height, so on a tall viewport the headline floated far
+          below the logo with a large dead band between them (stakeholder, 2026-08-04). The logo and
+          the words it introduces belong together; only the build note wants the bottom, and it asks
+          for that itself with `mt-auto`.
+        */
+        className="relative hidden overflow-hidden bg-surface-sunken px-10 py-12 lg:flex lg:flex-col xl:px-16"
       >
         {/*
           Atmosphere, in two layers and no more. A fine grid at 3% opacity reads as paper texture
@@ -123,7 +130,9 @@ export function LoginPage() {
           />
         </div>
 
-        <div className="relative max-w-xl">
+        {/* `mt-8` is 64px under the 8-point remap — a deliberate editorial gap under the lockup,
+            not the accident that `justify-between` was producing. */}
+        <div className="relative mt-8 max-w-xl">
           {/* The product name is the hero of this panel now — moved out of the small brand line
               and up to display size (stakeholder request, 2026-07-28). */}
           <h2 ref={headline} className="editorial text-editorial-xl text-text">
@@ -147,7 +156,9 @@ export function LoginPage() {
           </dl>
         </div>
 
-        <p className="relative text-caption text-text-muted">
+        {/* `mt-auto` keeps this on the floor of the panel now that the group above no longer
+            stretches — the one element that genuinely wants to be last. */}
+        <p className="relative mt-auto pt-6 text-caption text-text-muted">
           {USE_API
             ? 'Connected to the API · credentials verified server-side'
             : 'Prototype build · authentication is mocked'}
