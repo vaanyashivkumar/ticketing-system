@@ -20,7 +20,7 @@ const mkSession = (deptCode: keyof typeof DEPARTMENTS, id = 'u1', sysadmin = fal
 /** A Sales→Finance ticket raised by u-sales, assigned to u-fin. */
 const ticket = (over: Partial<TicketAuthView> = {}): TicketAuthView => ({
   createdById: 'u-sales',
-  assignedToId: 'u-fin',
+  assignedToId: 'u-raza',
   route: { fromDeptId: DEPARTMENTS.SAL.id, toDeptId: DEPARTMENTS.FIN.id },
   status: 'InProgress',
   ...over,
@@ -60,15 +60,15 @@ describe('Permission Engine — static (identity-level)', () => {
 describe('Permission Engine — ticket-scoped (route-derived)', () => {
   it('VIEW: source, destination and sysadmin only — never a third department', () => {
     expect(canOnTicket(mkSession('SAL', 'u-sales'), 'VIEW_TICKET', ticket())).toBe(true); // source
-    expect(canOnTicket(mkSession('FIN', 'u-fin'), 'VIEW_TICKET', ticket())).toBe(true); // destination
-    expect(canOnTicket(mkSession('ADM', 'u-adm', true), 'VIEW_TICKET', ticket())).toBe(true); // sysadmin
+    expect(canOnTicket(mkSession('FIN', 'u-raza'), 'VIEW_TICKET', ticket())).toBe(true); // destination
+    expect(canOnTicket(mkSession('ADM', 'u-susrita', true), 'VIEW_TICKET', ticket())).toBe(true); // sysadmin
     // Third party — MUST be denied
-    expect(canOnTicket(mkSession('MKT', 'u-mkt'), 'VIEW_TICKET', ticket())).toBe(false);
-    expect(canOnTicket(mkSession('HR', 'u-hr'), 'VIEW_TICKET', ticket())).toBe(false);
+    expect(canOnTicket(mkSession('MKT', 'u-balu'), 'VIEW_TICKET', ticket())).toBe(false);
+    expect(canOnTicket(mkSession('HR', 'u-sneha'), 'VIEW_TICKET', ticket())).toBe(false);
   });
 
   it('THE binding rule: the DESTINATION can never close or reopen', () => {
-    const dest = mkSession('FIN', 'u-fin');
+    const dest = mkSession('FIN', 'u-raza');
     expect(canOnTicket(dest, 'CLOSE_TICKET', ticket({ status: 'Resolved' }))).toBe(false);
     expect(canOnTicket(dest, 'REOPEN_TICKET', ticket({ status: 'Resolved' }))).toBe(false);
   });
@@ -84,11 +84,11 @@ describe('Permission Engine — ticket-scoped (route-derived)', () => {
   it('ProvideInformation is the REQUESTER’s act — the destination cannot resume', () => {
     const t = ticket({ status: 'AwaitingInformation' });
     expect(canOnTicket(mkSession('SAL', 'u-sales'), 'RESPOND_INFORMATION', t)).toBe(true);
-    expect(canOnTicket(mkSession('FIN', 'u-fin'), 'RESPOND_INFORMATION', t)).toBe(false);
+    expect(canOnTicket(mkSession('FIN', 'u-raza'), 'RESPOND_INFORMATION', t)).toBe(false);
   });
 
   it('Assign / RequestInformation / Reject are destination-only; requester denied', () => {
-    const dest = mkSession('FIN', 'u-fin');
+    const dest = mkSession('FIN', 'u-raza');
     const requester = mkSession('SAL', 'u-sales');
     for (const verb of ['ASSIGN_TICKET', 'REQUEST_INFORMATION', 'REJECT_TICKET'] as const) {
       expect(canOnTicket(dest, verb, ticket())).toBe(true);
@@ -97,14 +97,14 @@ describe('Permission Engine — ticket-scoped (route-derived)', () => {
   });
 
   it('RESOLVE requires the assignee — not merely any destination member', () => {
-    expect(canOnTicket(mkSession('FIN', 'u-fin'), 'RESOLVE_TICKET', ticket())).toBe(true);
+    expect(canOnTicket(mkSession('FIN', 'u-raza'), 'RESOLVE_TICKET', ticket())).toBe(true);
     // Another Finance member who does not hold the ticket
     expect(canOnTicket(mkSession('FIN', 'u-fin-other'), 'RESOLVE_TICKET', ticket())).toBe(false);
   });
 
   it('priority: requester at Draft only; destination thereafter', () => {
     const requester = mkSession('SAL', 'u-sales');
-    const dest = mkSession('FIN', 'u-fin');
+    const dest = mkSession('FIN', 'u-raza');
     expect(canOnTicket(requester, 'CHANGE_PRIORITY', ticket({ status: 'Draft' }))).toBe(true);
     expect(canOnTicket(requester, 'CHANGE_PRIORITY', ticket({ status: 'InProgress' }))).toBe(false);
     expect(canOnTicket(dest, 'CHANGE_PRIORITY', ticket({ status: 'InProgress' }))).toBe(true);
@@ -131,8 +131,8 @@ describe('Permission Engine — draft privacy (D09-1)', () => {
   const draft = ticket({ status: 'Draft', createdById: 'u-sales' });
   const creator = mkSession('SAL', 'u-sales');
   const sameDeptColleague = mkSession('SAL', 'u-sales-2');
-  const destination = mkSession('FIN', 'u-fin');
-  const sysadmin = mkSession('ADM', 'u-sys', true);
+  const destination = mkSession('FIN', 'u-raza');
+  const sysadmin = mkSession('ADM', 'u-susrita', true);
 
   it('the creator can view their own draft', () => {
     expect(canOnTicket(creator, 'VIEW_TICKET', draft)).toBe(true);

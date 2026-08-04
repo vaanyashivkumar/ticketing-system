@@ -11,7 +11,7 @@ import {
   canDecide,
 } from '@domain/leave/leaveEngine';
 import type { LeaveBalance, LeaveRecord, LeaveTypeName } from '@domain/leave/leaveTypes';
-import { LEAVE_EMPLOYEES, approverForStage } from '@config/leave.config';
+import { LEAVE_EMPLOYEES, eligibleApprovers } from '@config/leave.config';
 import { NotificationService } from '@services/notificationService';
 
 /**
@@ -49,40 +49,40 @@ function nextLeaveCode(records: readonly LeaveRecord[]): string {
 function seed(): LeaveRecord[] {
   return [
     {
-      id: 'l-seed-1', code: 'LV-0001', employeeId: 'u-sal', type: 'Annual',
+      id: 'l-seed-1', code: 'LV-0001', employeeId: 'u-iqra', type: 'Annual',
       startDate: '2024-08-05', endDate: '2024-08-09', requestedDays: 5, paidDays: 5, unpaidDays: 0,
       reason: 'Summer break', status: 'Approved', stage: null,
       createdAt: '2024-07-20T09:00:00.000Z', decidedAt: '2024-07-24T14:00:00.000Z',
       history: [
-        { stage: 'MANAGER', actorId: 'u-adm', action: 'Approved', at: '2024-07-21T10:00:00.000Z' },
-        { stage: 'HR', actorId: 'u-hr', action: 'Approved', at: '2024-07-22T11:00:00.000Z' },
-        { stage: 'MD', actorId: 'u-sys', action: 'Approved', at: '2024-07-24T14:00:00.000Z' },
+        { stage: 'MANAGER', actorId: 'u-hafeez', action: 'Approved', at: '2024-07-21T10:00:00.000Z' },
+        { stage: 'HR', actorId: 'u-sneha', action: 'Approved', at: '2024-07-22T11:00:00.000Z' },
+        { stage: 'MD', actorId: 'u-raja', action: 'Approved', at: '2024-07-24T14:00:00.000Z' },
       ],
     },
     {
-      id: 'l-seed-2', code: 'LV-0002', employeeId: 'u-sal', type: 'Sick',
+      id: 'l-seed-2', code: 'LV-0002', employeeId: 'u-iqra', type: 'Sick',
       startDate: '2025-02-11', endDate: '2025-02-12', requestedDays: 2, paidDays: 2, unpaidDays: 0,
       reason: 'Flu', status: 'Approved', stage: null,
       createdAt: '2025-02-11T08:00:00.000Z', decidedAt: '2025-02-13T09:00:00.000Z',
       history: [
-        { stage: 'MANAGER', actorId: 'u-adm', action: 'Approved', at: '2025-02-11T12:00:00.000Z' },
-        { stage: 'HR', actorId: 'u-hr', action: 'Approved', at: '2025-02-12T09:00:00.000Z' },
-        { stage: 'MD', actorId: 'u-sys', action: 'Approved', at: '2025-02-13T09:00:00.000Z' },
+        { stage: 'MANAGER', actorId: 'u-hafeez', action: 'Approved', at: '2025-02-11T12:00:00.000Z' },
+        { stage: 'HR', actorId: 'u-sneha', action: 'Approved', at: '2025-02-12T09:00:00.000Z' },
+        // Decided by the OTHER Managing Director — the MD stage is held jointly.
+        { stage: 'MD', actorId: 'u-maha', action: 'Approved', at: '2025-02-13T09:00:00.000Z' },
       ],
     },
     {
-      id: 'l-seed-3', code: 'LV-0003', employeeId: 'u-sal', type: 'Annual',
+      id: 'l-seed-3', code: 'LV-0003', employeeId: 'u-iqra', type: 'Annual',
       startDate: '2026-09-14', endDate: '2026-09-18', requestedDays: 5, paidDays: 5, unpaidDays: 0,
-      // Stage from the ENGINE, never hardcoded. Priya IS the Sales manager, so her own MANAGER
-      // stage auto-skips and this belongs at HR; a hardcoded 'MANAGER' would seed a row sitting in
-      // a queue that belongs to nobody, which no approver could ever act on.
-      reason: 'Family event', status: 'Pending', stage: firstStageFor('u-sal'),
+      // Stage from the ENGINE, never hardcoded — a seeded stage that contradicts the engine puts a
+      // row in a queue belonging to nobody, which no approver can ever act on.
+      reason: 'Family event', status: 'Pending', stage: firstStageFor('u-iqra'),
       createdAt: '2026-07-20T09:00:00.000Z', history: [],
     },
     {
-      id: 'l-seed-4', code: 'LV-0004', employeeId: 'u-fin-2', type: 'Parental',
+      id: 'l-seed-4', code: 'LV-0004', employeeId: 'u-hasna', type: 'Parental',
       startDate: '2026-08-03', endDate: '2026-08-07', requestedDays: 5, paidDays: 5, unpaidDays: 0,
-      reason: 'Childcare', status: 'Pending', stage: 'MANAGER',
+      reason: 'Childcare', status: 'Pending', stage: firstStageFor('u-hasna'),
       createdAt: '2026-07-22T09:00:00.000Z', history: [],
     },
   ];
@@ -178,7 +178,7 @@ export const useLeaveStore = create<LeaveState>((set, get) => ({
       NotificationService.publishLeave({
         type: 'LeaveAwaitingApproval',
         leaveId: record.id, code: record.code, employeeId: record.employeeId,
-        approverId: approverForStage(stage, record.employeeId),
+        approverIds: eligibleApprovers(stage, record.employeeId),
         travelled: [],
         actorId: input.employeeId,
       });
@@ -217,14 +217,14 @@ export const useLeaveStore = create<LeaveState>((set, get) => ({
       leaveId: updated.id, code: updated.code, employeeId: updated.employeeId, actorId,
     };
     if (action === 'Rejected') {
-      NotificationService.publishLeave({ ...subject, type: 'LeaveRejected', approverId: null, travelled });
+      NotificationService.publishLeave({ ...subject, type: 'LeaveRejected', approverIds: [], travelled });
     } else if (following === null) {
-      NotificationService.publishLeave({ ...subject, type: 'LeaveApproved', approverId: null, travelled });
+      NotificationService.publishLeave({ ...subject, type: 'LeaveApproved', approverIds: [], travelled });
     } else {
       NotificationService.publishLeave({
         ...subject,
         type: 'LeaveAwaitingApproval',
-        approverId: approverForStage(following, updated.employeeId),
+        approverIds: eligibleApprovers(following, updated.employeeId),
         travelled: [...travelled, actorId],
       });
     }
@@ -241,7 +241,7 @@ export const useLeaveStore = create<LeaveState>((set, get) => ({
     if (!target || target.employeeId !== actorId || target.status !== 'Pending') return;
 
     // Captured before `stage` is cleared — afterwards there is no way to know who was holding it.
-    const holder = target.stage ? approverForStage(target.stage, target.employeeId) : null;
+    const holders = target.stage ? eligibleApprovers(target.stage, target.employeeId) : [];
     const updated: LeaveRecord = { ...target, status: 'Cancelled', stage: null, decidedAt: nowISO() };
     const next = records.map((r) => (r.id === recordId ? updated : r));
     StorageAdapter.write(STORAGE_KEY, next);
@@ -250,7 +250,7 @@ export const useLeaveStore = create<LeaveState>((set, get) => ({
     NotificationService.publishLeave({
       type: 'LeaveCancelled',
       leaveId: updated.id, code: updated.code, employeeId: updated.employeeId,
-      approverId: holder,
+      approverIds: holders,
       travelled: target.history.map((h) => h.actorId),
       actorId,
     });

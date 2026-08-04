@@ -16,7 +16,8 @@ import {
   MONTHLY_ACCRUAL_DAYS,
   ALWAYS_UNPAID_TYPES,
   APPROVAL_STAGES,
-  approverForStage,
+  approversForStage,
+  eligibleApprovers,
   type ApprovalStage,
 } from '@config/leave.config';
 import type { LeaveBalance, LeaveRecord, LeaveTypeName } from './leaveTypes';
@@ -119,9 +120,14 @@ export function firstStageFor(
   const startIdx = APPROVAL_STAGES.indexOf(from);
   for (let i = startIdx; i < APPROVAL_STAGES.length; i++) {
     const stage = APPROVAL_STAGES[i]!;
-    const approver = approverForStage(stage, applicantId);
-    // A stage with no resolvable approver, or one the applicant occupies, is skipped.
-    if (approver && approver !== applicantId) return stage;
+    /**
+     * A stage runs when SOMEONE OTHER THAN THE APPLICANT can decide it — not when "the approver"
+     * is not the applicant. With two Managing Directors sharing the MD stage, an MD's own
+     * application is now decidable by their co-director, so the stage should run rather than be
+     * skipped for want of anyone eligible. Asking the set the right question makes that fall out
+     * instead of needing a case.
+     */
+    if (eligibleApprovers(stage, applicantId).length > 0) return stage;
   }
   return null;
 }
@@ -147,5 +153,5 @@ export function nextStageFor(applicantId: string, current: ApprovalStage): Appro
 export function canDecide(record: LeaveRecord, userId: string): boolean {
   if (record.status !== 'Pending' || record.stage === null) return false;
   if (userId === record.employeeId) return false;
-  return approverForStage(record.stage, record.employeeId) === userId;
+  return approversForStage(record.stage, record.employeeId).includes(userId);
 }

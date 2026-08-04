@@ -18,7 +18,7 @@ const ticket = (over: Partial<Ticket> = {}): Ticket => {
     id: `t${seq}`, code: `FIN-000${seq}`, subject: 's', description: 'd',
     status: 'InProgress' as TicketStatus, priority: 'Medium' as Priority,
     fromDeptCode: 'SAL', toDeptCode: 'FIN', categoryId: 'c', categoryLabel: 'Payment Link', categoryData: {},
-    createdById: 'u-sal', createdByName: 'S', assignedToId: null, assignedToName: null,
+    createdById: 'u-hafeez', createdByName: 'S', assignedToId: null, assignedToName: null,
     // Thu 16 Jul 2026 09:00 local — a business morning, so business hours advance predictably.
     createdAt: new Date(2026, 6, 16, 9, 0, 0).toISOString(),
     updatedAt: new Date(2026, 6, 16, 9, 0, 0).toISOString(),

@@ -30,10 +30,10 @@ import { NotificationService } from '@services/notificationService';
  * So this drives the real store through a real chain and then asks the real feed.
  */
 
-const SOFIA = 'u-fin-2'; // Finance, reports to James
-const JAMES = 'u-fin'; // her line manager
-const NADIA = 'u-hr'; // HR
-const ROWAN = 'u-md'; // Managing Director
+const EMPLOYEE = 'u-hasna'; // Finance Assistant, reports to Raza
+const MANAGER = 'u-raza'; // Finance Manager
+const HR = 'u-sneha'; // HR Executive
+const MD = 'u-raja'; // Managing Director (stage shared with Maha)
 
 const typesFor = (userId: string) => NotificationService.forUser(userId).map((n) => n.type);
 const store = () => useLeaveStore.getState();
@@ -41,46 +41,46 @@ const store = () => useLeaveStore.getState();
 /** File an application and walk it to a final decision, returning the record. */
 async function fileAndWalk(decisions: readonly ['Approved' | 'Rejected', string][]) {
   const rec = await store().apply({
-    employeeId: SOFIA, type: 'Annual',
+    employeeId: EMPLOYEE, type: 'Annual',
     startDate: '2027-06-01', endDate: '2027-06-03',
     reason: 'SECRET-MEDICAL-DETAIL',
   });
   for (const [action, actor] of decisions) await store().decide(rec!.id, actor, action);
-  return store().ledgerFor(SOFIA).find((r) => r.id === rec!.id)!;
+  return store().ledgerFor(EMPLOYEE).find((r) => r.id === rec!.id)!;
 }
 
 beforeEach(async () => {
   localStorage.clear();
   useLeaveStore.setState({ records: [] });
-  await store().load(SOFIA);
+  await store().load(EMPLOYEE);
 });
 
 describe('localStorage mode — the outcome travels back the same path', () => {
   it('notifies the REQUESTER, and every approver it passed through, on approval', async () => {
-    const rec = await fileAndWalk([['Approved', JAMES], ['Approved', NADIA], ['Approved', ROWAN]]);
+    const rec = await fileAndWalk([['Approved', MANAGER], ['Approved', HR], ['Approved', MD]]);
     expect(rec.status).toBe('Approved');
 
     // The requester is the whole point of the return path.
-    expect(typesFor(SOFIA)).toContain('LeaveApproved');
-    expect(typesFor(NADIA)).toContain('LeaveApproved');
-    expect(typesFor(JAMES)).toContain('LeaveApproved');
+    expect(typesFor(EMPLOYEE)).toContain('LeaveApproved');
+    expect(typesFor(HR)).toContain('LeaveApproved');
+    expect(typesFor(MANAGER)).toContain('LeaveApproved');
     // Author suppression — the MD decided it.
-    expect(typesFor(ROWAN)).not.toContain('LeaveApproved');
+    expect(typesFor(MD)).not.toContain('LeaveApproved');
   });
 
   it('notifies the requester that it was DISapproved, and stops where it stopped', async () => {
-    const rec = await fileAndWalk([['Approved', JAMES], ['Rejected', NADIA]]);
+    const rec = await fileAndWalk([['Approved', MANAGER], ['Rejected', HR]]);
     expect(rec.status).toBe('Rejected');
 
-    expect(typesFor(SOFIA)).toContain('LeaveRejected');
-    expect(typesFor(JAMES)).toContain('LeaveRejected'); // he approved it; he is owed the outcome
+    expect(typesFor(EMPLOYEE)).toContain('LeaveRejected');
+    expect(typesFor(MANAGER)).toContain('LeaveRejected'); // he approved it; he is owed the outcome
     // It never reached the MD, so the MD is told nothing at all about it.
-    expect(NotificationService.forUser(ROWAN)).toHaveLength(0);
+    expect(NotificationService.forUser(MD)).toHaveLength(0);
   });
 
   it('carries the leave code and a link to the leave page, and never the reason', async () => {
-    const rec = await fileAndWalk([['Approved', JAMES], ['Approved', NADIA], ['Approved', ROWAN]]);
-    const note = NotificationService.forUser(SOFIA).find((n) => n.type === 'LeaveApproved')!;
+    const rec = await fileAndWalk([['Approved', MANAGER], ['Approved', HR], ['Approved', MD]]);
+    const note = NotificationService.forUser(EMPLOYEE).find((n) => n.type === 'LeaveApproved')!;
 
     expect(note.message).toContain(rec.code);
     expect(note.leaveId).toBe(rec.id); // routes to /app/leave rather than a dead ticket link
@@ -89,17 +89,17 @@ describe('localStorage mode — the outcome travels back the same path', () => {
 
   it('tells the next approver at every forward hop, one person at a time', async () => {
     const rec = await store().apply({
-      employeeId: SOFIA, type: 'Annual', startDate: '2027-07-01', endDate: '2027-07-02',
+      employeeId: EMPLOYEE, type: 'Annual', startDate: '2027-07-01', endDate: '2027-07-02',
     });
     // Filed: only the line manager is asked.
-    expect(typesFor(JAMES)).toEqual(['LeaveAwaitingApproval']);
-    expect(NotificationService.forUser(NADIA)).toHaveLength(0);
+    expect(typesFor(MANAGER)).toEqual(['LeaveAwaitingApproval']);
+    expect(NotificationService.forUser(HR)).toHaveLength(0);
 
-    await store().decide(rec!.id, JAMES, 'Approved');
-    expect(typesFor(NADIA)).toEqual(['LeaveAwaitingApproval']);
-    expect(NotificationService.forUser(ROWAN)).toHaveLength(0);
+    await store().decide(rec!.id, MANAGER, 'Approved');
+    expect(typesFor(HR)).toEqual(['LeaveAwaitingApproval']);
+    expect(NotificationService.forUser(MD)).toHaveLength(0);
 
-    await store().decide(rec!.id, NADIA, 'Approved');
-    expect(typesFor(ROWAN)).toEqual(['LeaveAwaitingApproval']);
+    await store().decide(rec!.id, HR, 'Approved');
+    expect(typesFor(MD)).toEqual(['LeaveAwaitingApproval']);
   });
 });

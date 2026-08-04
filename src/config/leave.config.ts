@@ -51,15 +51,22 @@ export const STAGE_LABEL: Readonly<Record<ApprovalStage, string>> = {
  * The demo approver mapping (stakeholder-confirmed, 2026-07-24). HR and MD are global; the line
  * manager is PER DEPARTMENT (below), resolved from the applicant's own department at read time.
  */
-export const HR_APPROVER_ID = 'u-hr'; // Nadia Okonkwo
+export const HR_APPROVER_ID = 'u-sneha'; // Sneha — the sole HR member, so every chain passes her
+
 /**
- * Rowan Ashcroft — the Managing Director, their own identity since 2026-08-03.
+ * BOTH Managing Directors, 2026-08-04. The MD stage is held JOINTLY: either Raja or Maha may give
+ * final approval, and whoever acts first decides it (stakeholder decision).
  *
- * This pointed at Marcus Vane (`u-sys`), which made the System Administrator the final approver of
- * every leave application in the company. Separating them means the account that governs the
- * software is no longer the account that runs the business.
+ * A LIST, not a pair of constants, because the number of MDs is data. The engine asks "who may
+ * decide this stage" and gets back a set — one name, two, or none — so a third MD or a return to
+ * one needs no code change. It also fixes something the single-MD model could not express: an
+ * MD's own application is now approvable BY THE OTHER MD rather than having to skip the stage for
+ * want of anyone eligible.
  */
-export const MD_APPROVER_ID = 'u-md';
+export const MD_APPROVER_IDS: readonly string[] = ['u-raja', 'u-maha'];
+
+/** True for a Managing Director. They sit outside the line-management chain — see `lineManagerFor`. */
+export const isManagingDirector = (userId: string): boolean => MD_APPROVER_IDS.includes(userId);
 
 /**
  * ── PER-DEPARTMENT LINE MANAGERS (stakeholder decision, 2026-08-03). ──────────────────────────
@@ -77,12 +84,19 @@ export const MD_APPROVER_ID = 'u-md';
  * (BUSINESS_DOMAIN_MODEL §2.3 — no stored role, no role-keyed permission table).
  */
 export const DEPARTMENT_MANAGERS: Readonly<Record<DepartmentCode, string | null>> = {
-  SAL: 'u-sal', // Priya Raman
-  MKT: 'u-mkt', // Tom Whitfield
-  ACA: 'u-aca', // Dr Elena Marsh
-  HR: 'u-hr', // Nadia Okonkwo
-  FIN: 'u-fin', // James Carrow — Sofia Nowak reports to him
-  ADM: 'u-adm', // Ruth Bello — Marcus Vane reports to her
+  SAL: 'u-hafeez', // Hafeez — Sales Executive AND Manager; the title does not confer this, the field does
+  MKT: 'u-balu', // Balu — Digital Marketing Manager
+  FIN: 'u-raza', // Raza — Finance Manager
+  HR: 'u-sneha', // Sneha — sole member, so also her own department's manager
+  OPS: 'u-amna', // Amna — Operations General Manager
+  /**
+   * NULL, and deliberately so: the org chart names no line manager for either department — their
+   * "head, for final approval" is an MD, which is the MD stage, not the manager stage. Their
+   * people's leave therefore skips MANAGER and starts at HR, the ratified behaviour. Naming a
+   * manager here to avoid a null would invent a reporting line the business did not state.
+   */
+  ACA: null, // Radhika, Henoc, Anu — final approval sits with MD Raja
+  ADM: null, // Susrita; the two MDs sit here too and have no line manager by rule
 };
 
 interface LeaveEmployee {
@@ -97,21 +111,40 @@ interface LeaveEmployee {
  * per-person. A stage whose approver IS the applicant auto-passes (see leaveEngine).
  */
 export const LEAVE_EMPLOYEES: Readonly<Record<string, LeaveEmployee>> = {
-  'u-sal': { joinDate: '2022-03-01' }, // Priya Raman
-  'u-mkt': { joinDate: '2023-06-15' }, // Tom Whitfield
-  'u-aca': { joinDate: '2021-09-01' }, // Dr Elena Marsh
-  'u-hr': { joinDate: '2020-01-20' }, // Nadia Okonkwo
-  'u-fin': { joinDate: '2022-11-10' }, // James Carrow
-  'u-fin-2': { joinDate: '2024-02-05' }, // Sofia Nowak
-  'u-adm': { joinDate: '2019-05-06' }, // Ruth Bello
-  'u-sys': { joinDate: '2018-04-02' }, // Marcus Vane
-  'u-md': { joinDate: '2017-01-09' }, // Rowan Ashcroft (MD — longest service, as you'd expect)
-  // The four second-members (2026-08-04). Recent joiners, so their accrued balances differ
-  // visibly from their managers' and the Team view has something other than uniform rows.
-  'u-sal-2': { joinDate: '2025-04-14' }, // Daniel Okoro
-  'u-mkt-2': { joinDate: '2024-10-07' }, // Yusuf Kaya
-  'u-aca-2': { joinDate: '2025-01-20' }, // Aisha Nabil
-  'u-hr-2': { joinDate: '2024-06-03' }, // Grace Lim
+  // Leadership — longest service, so their balances are the largest on the Team view.
+  'u-raja': { joinDate: '2016-02-01' }, // MD
+  'u-maha': { joinDate: '2016-02-01' }, // MD
+  'u-susrita': { joinDate: '2021-08-16' },
+  // Digital Marketing
+  'u-balu': { joinDate: '2019-03-11' },
+  'u-sakshi': { joinDate: '2023-07-03' },
+  'u-mufeeda': { joinDate: '2022-09-19' },
+  'u-minhaj': { joinDate: '2023-02-06' },
+  'u-anas': { joinDate: '2024-05-13' },
+  'u-john': { joinDate: '2021-11-08' },
+  'u-manahil': { joinDate: '2024-01-15' },
+  'u-absal': { joinDate: '2025-03-24' },
+  // Sales
+  'u-hafeez': { joinDate: '2018-06-04' },
+  'u-iqra': { joinDate: '2022-01-17' },
+  'u-vakas': { joinDate: '2021-04-12' },
+  'u-rajesh': { joinDate: '2020-10-05' },
+  'u-ranjit': { joinDate: '2023-09-11' },
+  'u-nisha': { joinDate: '2024-08-19' },
+  'u-bakar': { joinDate: '2025-02-10' },
+  // Finance
+  'u-raza': { joinDate: '2019-07-22' },
+  'u-hasna': { joinDate: '2023-03-06' },
+  // Academics
+  'u-radhika': { joinDate: '2020-05-18' },
+  'u-henoc': { joinDate: '2022-08-08' },
+  'u-anu': { joinDate: '2024-03-25' },
+  // Operations
+  'u-amna': { joinDate: '2018-11-26' },
+  'u-hussain': { joinDate: '2022-06-13' },
+  'u-samah': { joinDate: '2024-11-04' },
+  // Human Resources
+  'u-sneha': { joinDate: '2020-09-14' },
 };
 
 /** The line manager of a department, or null when it has none (the chain then starts at HR). */
@@ -125,21 +158,40 @@ export function managerOfDepartment(code: DepartmentCode | null | undefined): st
  * wrong one). The department comes from MOCK_USERS, which is the identity source in localStorage
  * mode and the list the API seeds from, so both modes resolve the same manager.
  *
- * THE MD HAS NO LINE MANAGER, and that is a business fact rather than missing data: there is
- * nobody above the Managing Director. Without this they would inherit their department's manager
- * and the head of the company would be sending leave upward to someone who reports to them.
- * Their chain is therefore HR alone — the MD stage self-skips (stakeholder, 2026-08-03).
+ * AN MD HAS NO LINE MANAGER, and that is a business fact rather than missing data: nobody is
+ * above a Managing Director. Without this they would inherit their department's manager and the
+ * head of the company would be sending leave upward to one of their own reports.
+ *
+ * Note what changed when a SECOND MD arrived: an MD's chain is no longer HR-only. Their MD stage
+ * now has an eligible approver — the other MD — so it runs. HR → MD, with the co-director
+ * deciding. That falls out of the set-based rule below; it is not special-cased.
  */
 export function lineManagerFor(userId: string): string | null {
-  if (userId === MD_APPROVER_ID) return null;
+  if (isManagingDirector(userId)) return null;
   return managerOfDepartment(MOCK_USERS.find((u) => u.id === userId)?.departmentCode);
 }
 
-/** The user id who approves a given stage for a given applicant. */
-export function approverForStage(stage: ApprovalStage, applicantId: string): string | null {
+/**
+ * EVERYONE who may decide a stage — a SET, because the MD stage is held jointly by both Managing
+ * Directors and whichever acts first decides it.
+ *
+ * The applicant is NOT filtered here. Callers do that, and they must: "who holds this stage" and
+ * "who may act on it" are different questions, and collapsing them is how a self-approval guard
+ * gets lost. `firstStageFor` skips a stage with no ELIGIBLE approver; `canDecide` refuses the
+ * applicant outright.
+ */
+export function approversForStage(stage: ApprovalStage, applicantId: string): readonly string[] {
   switch (stage) {
-    case 'MANAGER': return lineManagerFor(applicantId);
-    case 'HR': return HR_APPROVER_ID;
-    case 'MD': return MD_APPROVER_ID;
+    case 'MANAGER': {
+      const manager = lineManagerFor(applicantId);
+      return manager ? [manager] : [];
+    }
+    case 'HR': return [HR_APPROVER_ID];
+    case 'MD': return MD_APPROVER_IDS;
   }
+}
+
+/** Display helper: who a pending stage is currently waiting on, for the UI to name. */
+export function eligibleApprovers(stage: ApprovalStage, applicantId: string): readonly string[] {
+  return approversForStage(stage, applicantId).filter((id) => id !== applicantId);
 }

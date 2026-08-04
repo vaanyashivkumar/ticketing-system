@@ -13,6 +13,15 @@ export const DEPARTMENTS: Readonly<Record<DepartmentCode, Department>> = {
   HR: { id: 'dept-hr', code: 'HR', name: 'Human Resources', isDestination: true },
   FIN: { id: 'dept-fin', code: 'FIN', name: 'Finance', isDestination: true },
   ADM: { id: 'dept-adm', code: 'ADM', name: 'Administration', isDestination: false },
+  /**
+   * RATIFIED AMENDMENT, 2026-08-04. The Constitution fixed six departments; the stakeholder added
+   * Operations as a seventh with the routing consequence understood and accepted.
+   *
+   * `isDestination: false` is the conservative half of that: a department only receives tickets
+   * once someone has ratified WHAT it receives, and no inbound categories exist for Operations.
+   * Making it a destination without categories would give it a queue that nothing can ever enter.
+   */
+  OPS: { id: 'dept-ops', code: 'OPS', name: 'Operations', isDestination: false },
 };
 
 export const DEPARTMENT_LIST: readonly Department[] = Object.values(DEPARTMENTS);

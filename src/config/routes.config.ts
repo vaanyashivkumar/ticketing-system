@@ -270,7 +270,10 @@ const HR_INBOUND: readonly CategoryConfig[] = [
 ];
 
 // ---- Route definitions ----
-const CODES: readonly DepartmentCode[] = ['SAL', 'MKT', 'ACA', 'HR', 'FIN', 'ADM'];
+// `OPS` added by the 2026-08-04 ratification. It appears here and therefore inherits the two
+// wildcard outbound routes below — which is the whole point: those rows say "other departments",
+// and Operations is now one of them. 14 concrete routes becomes 16 (OPS→HR, OPS→ACA).
+const CODES: readonly DepartmentCode[] = ['SAL', 'MKT', 'ACA', 'HR', 'FIN', 'ADM', 'OPS'];
 
 export const ROUTES: readonly RouteConfig[] = [
   // Finance-inbound (specific)

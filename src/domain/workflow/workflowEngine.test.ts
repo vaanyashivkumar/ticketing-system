@@ -18,7 +18,7 @@ const mkSession = (deptCode: keyof typeof DEPARTMENTS, id: string): Session => {
 const ticket = (over: Partial<Ticket> = {}): Ticket => ({
   id: 't1', code: 'FIN-0001', subject: 's', description: 'd', status: 'InProgress', priority: 'Medium',
   fromDeptCode: 'SAL', toDeptCode: 'FIN', categoryId: 'c', categoryLabel: 'C', categoryData: {},
-  createdById: 'u-sales', createdByName: 'Sales', assignedToId: 'u-fin', assignedToName: 'Fin',
+  createdById: 'u-sales', createdByName: 'Sales', assignedToId: 'u-raza', assignedToName: 'Fin',
   createdAt: '', updatedAt: '',
   sla: { startedAt: null, dueAt: null, resolvedAt: null, closedAt: null, pausedMsAccrued: 0, pausedSince: null, flag: 'OnTrack' },
   resolutionNote: null,
@@ -62,12 +62,12 @@ const CANONICAL_EDGES: readonly (readonly [TicketStatus, TicketStatus])[] = [
  */
 describe('Permission Engine ⋀ actors — the A3 conjunction (lockstep)', () => {
   // A ticket raised by Sales, routed to Finance, assigned to a specific Finance member.
-  const t = (status: TicketStatus) => ticket({ status, fromDeptCode: 'SAL', toDeptCode: 'FIN', createdById: 'u-sales', assignedToId: 'u-fin' });
+  const t = (status: TicketStatus) => ticket({ status, fromDeptCode: 'SAL', toDeptCode: 'FIN', createdById: 'u-sales', assignedToId: 'u-raza' });
 
   const creator = mkSession('SAL', 'u-sales');
-  const assignee = mkSession('FIN', 'u-fin');
+  const assignee = mkSession('FIN', 'u-raza');
   const destOther = mkSession('FIN', 'u-fin-colleague'); // destination dept, NOT the assignee
-  const stranger = mkSession('MKT', 'u-mkt');
+  const stranger = mkSession('MKT', 'u-balu');
 
   it('maps every action in the legal set — no edge is unmapped', () => {
     const unmapped = STATUS_TRANSITIONS.filter((e) => !PERMISSION_FOR_ACTION[e.action]);
@@ -168,7 +168,7 @@ describe('Permission Engine ⋀ actors — the A3 conjunction (lockstep)', () =>
  * read, which removes the whole point of two-step closure.
  */
 describe('Workflow Engine — mandatory reason / resolution note (D04 #6)', () => {
-  const actor = { id: 'u-fin', name: 'Fin' };
+  const actor = { id: 'u-raza', name: 'Fin' };
 
   it('EVERY Reject edge demands a reason (BR-050 names all five)', () => {
     const rejects = STATUS_TRANSITIONS.filter((e) => e.to === 'Rejected');
@@ -228,7 +228,7 @@ describe('Workflow Engine — mandatory reason / resolution note (D04 #6)', () =
     const def = resolveTransition('InProgress', 'RequestInformation')!;
     const { ticket: next } = applyTransition(
       ticket({ status: 'InProgress' }), def,
-      { id: 'u-fin', name: 'Fin', departmentCode: 'FIN' }, undefined,
+      { id: 'u-raza', name: 'Fin', departmentCode: 'FIN' }, undefined,
       'Which cost centre should this be booked to?',
     );
     const c = next.comments.at(-1)!;
@@ -251,7 +251,7 @@ describe('Workflow Engine — mandatory reason / resolution note (D04 #6)', () =
 
   it('a transition with no text guard adds NO comment — the conversation is not spammed', () => {
     const def = resolveTransition('Assigned', 'Start')!;
-    const { ticket: next } = applyTransition(ticket({ status: 'Assigned' }), def, { id: 'u-fin', name: 'Fin' });
+    const { ticket: next } = applyTransition(ticket({ status: 'Assigned' }), def, { id: 'u-raza', name: 'Fin' });
     expect(next.comments).toEqual([]);
   });
 
@@ -355,18 +355,18 @@ describe('Workflow Engine — the legal transition set', () => {
 describe('Workflow Engine — actorMatches (route-derived authorisation)', () => {
   it('matches requester by creator id, destination by department', () => {
     expect(actorMatches(mkSession('SAL', 'u-sales'), ['requester'], ticket())).toBe(true);
-    expect(actorMatches(mkSession('FIN', 'u-fin'), ['destination'], ticket())).toBe(true);
-    expect(actorMatches(mkSession('MKT', 'u-mkt'), ['destination'], ticket())).toBe(false);
+    expect(actorMatches(mkSession('FIN', 'u-raza'), ['destination'], ticket())).toBe(true);
+    expect(actorMatches(mkSession('MKT', 'u-balu'), ['destination'], ticket())).toBe(false);
   });
 
   it('assignee matches only the holder of the ticket', () => {
-    expect(actorMatches(mkSession('FIN', 'u-fin'), ['assignee'], ticket())).toBe(true);
+    expect(actorMatches(mkSession('FIN', 'u-raza'), ['assignee'], ticket())).toBe(true);
     expect(actorMatches(mkSession('FIN', 'u-fin-other'), ['assignee'], ticket())).toBe(false);
   });
 
   it('the destination cannot satisfy the Close edge’s actors', () => {
     const close = resolveTransition('Resolved', 'Close')!;
-    expect(actorMatches(mkSession('FIN', 'u-fin'), close.actors, ticket({ status: 'Resolved' }))).toBe(false);
+    expect(actorMatches(mkSession('FIN', 'u-raza'), close.actors, ticket({ status: 'Resolved' }))).toBe(false);
     expect(actorMatches(mkSession('SAL', 'u-sales'), close.actors, ticket({ status: 'Resolved' }))).toBe(true);
   });
 
@@ -402,7 +402,7 @@ describe('BR-052 — reopen tally', () => {
     const submitted = { ...ticket(), status: 'Submitted' as const, reopenCount: 3 };
     const assigned = applyTransition(
       submitted, resolveTransition('Submitted', 'Assign')!,
-      { id: 'u-fin', name: 'Dest' }, { id: 'u-fin', name: 'Dest' },
+      { id: 'u-raza', name: 'Dest' }, { id: 'u-raza', name: 'Dest' },
     ).ticket;
     expect(assigned.reopenCount).toBe(3);
   });

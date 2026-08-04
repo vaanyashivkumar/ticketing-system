@@ -72,8 +72,8 @@ describe('BR-060 — changing priority', () => {
   };
 
   const requester = dept('SAL', 'u-sales');
-  const destination = dept('FIN', 'u-fin');
-  const stranger = dept('HR', 'u-hr');
+  const destination = dept('FIN', 'u-raza');
+  const stranger = dept('HR', 'u-sneha');
   const sysadmin = dept('ADM', 'u-admin', true);
 
   // Thu 16 Jul 2026 09:00 — a business morning, so targets land predictably.
@@ -84,7 +84,7 @@ describe('BR-060 — changing priority', () => {
       id: 't-prio', code: 'FIN-0001', subject: 's', description: 'd',
       status: 'Assigned', priority: 'Low',
       fromDeptCode: 'SAL', toDeptCode: 'FIN', categoryId: 'c', categoryLabel: 'C', categoryData: {},
-      createdById: 'u-sales', createdByName: 'Sales', assignedToId: 'u-fin', assignedToName: 'Fin',
+      createdById: 'u-sales', createdByName: 'Sales', assignedToId: 'u-raza', assignedToName: 'Fin',
       createdAt: anchored, updatedAt: anchored,
       sla: initialSla('Low', anchored, DEFAULT_SLA_POLICY),
       resolutionNote: null, reopenCount: 0, rejectionReason: null,

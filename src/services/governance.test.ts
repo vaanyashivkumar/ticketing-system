@@ -153,12 +153,12 @@ describe('Re-assignment is a non-status audited write (D04 #2 / #8)', () => {
  * express the situations these fixes exist for: re-assigning to a colleague (D04 #2/#8) had nobody
  * to re-assign to, and D04 #7's whole point — a colleague picking up a ticket whose assignee is
  * unavailable — could only be demonstrated by inventing an id that AuthService then (correctly)
- * refused, because unknown identities are never active. Sofia Nowak is a (C) demo fixture added
+ * refused, because unknown identities are never active. Hasna is a second Finance member
  * for exactly this; these tests assert she earns her place rather than merely existing.
  */
-describe('Finance has two members — the flows that need a colleague are now reachable', () => {
-  const james = MOCK_USERS.find((u) => u.id === 'u-fin')!;
-  const sofia = MOCK_USERS.find((u) => u.id === 'u-fin-2')!;
+describe('Finance has two members (Raza and Hasna) — the flows that need a colleague are now reachable', () => {
+  const james = MOCK_USERS.find((u) => u.id === 'u-raza')!;
+  const sofia = MOCK_USERS.find((u) => u.id === 'u-hasna')!;
 
   it('both are real, sign-in-able Finance identities', () => {
     expect(sofia).toBeDefined();
@@ -186,7 +186,7 @@ describe('Finance has two members — the flows that need a colleague are now re
     TicketService.commitAction(c.value.id, 'Assign', jamesS, { id: james.id, name: james.name });
     const r = TicketService.reassign(c.value.id, { id: sofia.id, name: sofia.name }, jamesS);
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.value.assignedToName).toBe('Sofia Nowak');
+    if (r.ok) expect(r.value.assignedToName).toBe('Hasna');
   });
 });
 

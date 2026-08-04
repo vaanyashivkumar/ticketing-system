@@ -15,10 +15,10 @@ import { NotificationService } from '@services/notificationService';
  */
 
 const CHAIN = {
-  employee: 'u-fin-2', // Sofia Nowak (Finance)
-  manager: 'u-fin', // James Carrow, her department's line manager
-  hr: 'u-hr', // Nadia Okonkwo
-  md: 'u-md', // Rowan Ashcroft, the Managing Director
+  employee: 'u-hasna', // Hasna (Finance Assistant)
+  manager: 'u-raza', // Raza, Finance Manager — her department's line manager
+  hr: 'u-sneha', // Sneha, HR Executive
+  md: 'u-raja', // Raja, Managing Director (the MD stage is shared with Maha)
 };
 
 const notifiedBy = (userId: string) =>
@@ -33,7 +33,7 @@ describe('forward hop — only the person who has to act', () => {
     NotificationService.publishLeave({
       type: 'LeaveAwaitingApproval',
       leaveId: 'l1', code: 'LV-0007', employeeId: CHAIN.employee,
-      approverId: CHAIN.manager, travelled: [],
+      approverIds: [CHAIN.manager], travelled: [],
       actorId: CHAIN.employee,
     });
 
@@ -51,7 +51,7 @@ describe('backward hop — the very same path, reversed', () => {
     NotificationService.publishLeave({
       type: 'LeaveApproved',
       leaveId: 'l1', code: 'LV-0007', employeeId: CHAIN.employee,
-      approverId: null, travelled: [CHAIN.manager, CHAIN.hr],
+      approverIds: [], travelled: [CHAIN.manager, CHAIN.hr],
       actorId: CHAIN.md,
     });
 
@@ -68,7 +68,7 @@ describe('backward hop — the very same path, reversed', () => {
     NotificationService.publishLeave({
       type: 'LeaveRejected',
       leaveId: 'l2', code: 'LV-0008', employeeId: CHAIN.employee,
-      approverId: null, travelled: [CHAIN.manager],
+      approverIds: [], travelled: [CHAIN.manager],
       actorId: CHAIN.hr,
     });
 
@@ -84,7 +84,7 @@ describe('backward hop — the very same path, reversed', () => {
     NotificationService.publishLeave({
       type: 'LeaveApproved',
       leaveId: 'l3', code: 'LV-0009', employeeId: CHAIN.manager,
-      approverId: null, travelled: [CHAIN.hr],
+      approverIds: [], travelled: [CHAIN.hr],
       actorId: CHAIN.md,
     });
 
@@ -99,12 +99,12 @@ describe('what a leave notification is allowed to say', () => {
     NotificationService.publishLeave({
       type: 'LeaveRejected',
       leaveId: 'l4', code: 'LV-0010', employeeId: CHAIN.employee,
-      approverId: null, travelled: [], actorId: CHAIN.hr,
+      approverIds: [], travelled: [], actorId: CHAIN.hr,
     });
 
     const [note] = NotificationService.forUser(CHAIN.employee);
     expect(note!.message).toContain('LV-0010');
-    expect(note!.message).toContain('Nadia Okonkwo');
+    expect(note!.message).toContain('Sneha');
     // The reason lives on the record, behind the screen's own access rules. `publishLeave` is
     // never handed one — the event type has no such field — so this can only ever be a pointer.
     expect(note!.message).toContain('the reason is on the record');

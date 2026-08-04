@@ -107,13 +107,17 @@ describe('the Not-applicable sentinel (C36)', () => {
       (c) => c.label === 'Tenancy Renewal – Payments' || c.label === 'Licence Renewal',
     );
     /**
-     * TWELVE, not four. `HR_INBOUND` is fanned out to every department→HR route, so these two
-     * categories exist on 5 inbound-HR routes plus HR→Finance. The first version of this test
+     * FOURTEEN, not four. `HR_INBOUND` is fanned out to every department→HR route, so these two
+     * categories exist on 6 inbound-HR routes plus HR→Finance. The first version of this test
      * asserted 4 — the number the two screenshots suggested — and failed with "expected 12".
      * Editing a shared `const` at the top of the config reaches much further than it appears to,
      * which is precisely why this count is asserted rather than assumed.
+     *
+     * It moved 12 → 14 when Operations was ratified as a seventh department: one more source
+     * department fanning into HR is two more instances of this pair. Exactly the reach this
+     * comment warns about, demonstrated.
      */
-    expect(renewals).toHaveLength(12);
+    expect(renewals).toHaveLength(14);
     for (const c of renewals) {
       expect(c.fields.find((f) => f.key === 'amount')).toMatchObject({
         type: 'money',
@@ -417,7 +421,7 @@ describe('config declares the types the specification declares', () => {
  */
 describe('TicketService.create enforces format', () => {
   const priya: Session = {
-    user: MOCK_USERS.find((u) => u.id === 'u-sal')!,
+    user: MOCK_USERS.find((u) => u.id === 'u-hafeez')!,
     authenticatedAt: new Date().toISOString(),
   };
   const base = {

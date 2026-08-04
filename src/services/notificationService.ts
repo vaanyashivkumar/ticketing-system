@@ -34,7 +34,12 @@ export interface LeaveNotificationEvent {
   readonly leaveId: string;
   readonly code: string;
   readonly employeeId: string;
-  readonly approverId: string | null;
+  /**
+   * EVERYONE who can act on the current stage — a list, because the MD stage is held jointly by
+   * both Managing Directors. Singular here would have silently told one of them and left the
+   * other unaware of work they are equally able to decide.
+   */
+  readonly approverIds: readonly string[];
   readonly travelled: readonly string[];
   readonly actorId: string;
 }
@@ -160,9 +165,9 @@ export const NotificationService = {
     const back = [...evt.travelled].reverse();
     const to =
       evt.type === 'LeaveAwaitingApproval'
-        ? (evt.approverId ? [evt.approverId] : [])
+        ? [...evt.approverIds]
         : evt.type === 'LeaveCancelled'
-          ? [...(evt.approverId ? [evt.approverId] : []), ...back]
+          ? [...evt.approverIds, ...back]
           : [...back, evt.employeeId];
 
     const actorName = MOCK_USERS.find((u) => u.id === evt.actorId)?.name ?? 'Someone';

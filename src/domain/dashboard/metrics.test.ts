@@ -27,12 +27,12 @@ const started = at(2026, 7, 16, 9).toISOString(); // Urgent => 8 business hours 
 const ticket = (id: string, status: TicketStatus, sla: SlaState): Ticket => ({
   id, code: `FIN-000${id}`, subject: 's', description: 'd', status, priority: 'Urgent',
   fromDeptCode: 'SAL', toDeptCode: 'FIN', categoryId: 'c', categoryLabel: 'C', categoryData: {},
-  createdById: 'u-sales', createdByName: 'Sales', assignedToId: 'u-fin', assignedToName: 'Fin',
+  createdById: 'u-sales', createdByName: 'Sales', assignedToId: 'u-raza', assignedToName: 'Fin',
   createdAt: '', updatedAt: '', sla, resolutionNote: null,
   reopenCount: 0, rejectionReason: null, comments: [], attachments: [], activity: [],
 });
 
-const session = mkSession('FIN', 'u-fin');
+const session = mkSession('FIN', 'u-raza');
 const fresh = () => initialSla('Urgent', started, DEFAULT_SLA_POLICY);
 
 describe('Dashboard KPIs — SLA compliance tells the truth about the past (D04 #37)', () => {

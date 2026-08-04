@@ -48,8 +48,17 @@ describe('Routing Engine — the administrative disable actually governs intake 
 
 /** The routing matrix is immutable (PROJECT_CONSTITUTION §2.3). These tests defend it. */
 describe('Routing Engine — the ratified matrix', () => {
-  it('has exactly 14 concrete routes', () => {
-    expect(ROUTES.length).toBe(14);
+  it('has exactly 16 concrete routes', () => {
+    /**
+     * SIXTEEN since the 2026-08-04 ratification, not the long-standing 14. Operations was added as
+     * a seventh department, and the two wildcard rows say "other departments" — so it inherited
+     * OPS→HR and OPS→ACA automatically rather than needing an invented matrix.
+     *
+     * The count is still asserted, and still deliberately hostile to change: the Constitution
+     * calls this matrix immutable, so it may only move by a ratification like that one. If this
+     * number changes again without a stakeholder decision behind it, something is wrong.
+     */
+    expect(ROUTES.length).toBe(16);
   });
 
   it('THE rule most easily broken: Finance is EXCLUDED from the Other→Academics wildcard', () => {

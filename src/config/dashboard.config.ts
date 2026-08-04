@@ -247,6 +247,14 @@ export const DASHBOARDS: Readonly<Record<DepartmentCode, DashboardConfig>> = {
   // the capability is actually held, and saying it here too printed it twice for a sysadmin and
   // promised it to an Administration user who does not hold it (OQ-02 leaves that open).
   ADM: requesterDashboard('ADM', 'Administration', 'Your outbound requests to HR and Academics.'),
+  /**
+   * Operations, the ratified 7th department (2026-08-04). A REQUESTER dashboard, because nothing
+   * routes to Operations yet — it holds the two wildcard outbound routes (→ HR, → Academics) and
+   * no inbound categories have been ratified. Give it a destination dashboard and it would show a
+   * queue that is structurally, permanently empty. When inbound categories are ratified, this
+   * becomes `dualDashboard` and `isDestination` flips with it.
+   */
+  OPS: requesterDashboard('OPS', 'Operations', 'Your outbound requests to HR and Academics.'),
   ACA: dualDashboard('ACA', 'Academics', 'Your inbound queue, and the requests you have raised.'),
   HR: dualDashboard('HR', 'Human Resources', 'Your inbound queue, and the requests you have raised.'),
   /**

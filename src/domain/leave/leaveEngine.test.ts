@@ -10,11 +10,11 @@ import {
   canDecide,
 } from './leaveEngine';
 import type { LeaveRecord } from './leaveTypes';
-import { HR_APPROVER_ID, MD_APPROVER_ID, lineManagerFor, managerOfDepartment } from '@config/leave.config';
+import { HR_APPROVER_ID, lineManagerFor, managerOfDepartment, eligibleApprovers } from '@config/leave.config';
 import { MOCK_USERS } from '@config/mockUsers.config';
 
 const rec = (over: Partial<LeaveRecord>): LeaveRecord => ({
-  id: 'l1', code: 'LV-0001', employeeId: 'u-sal', type: 'Annual',
+  id: 'l1', code: 'LV-0001', employeeId: 'u-iqra', type: 'Annual',
   startDate: '2026-01-10', endDate: '2026-01-12', requestedDays: 3,
   paidDays: 3, unpaidDays: 0, status: 'Pending', stage: 'MANAGER',
   history: [], createdAt: '2026-01-01T00:00:00.000Z', ...over,
@@ -77,10 +77,10 @@ describe('computeBalance', () => {
 
   it('counts ONLY the named employee — one person\'s leave never touches another\'s balance', () => {
     const records = [
-      rec({ id: 'mine', employeeId: 'u-sal', status: 'Approved', paidDays: 4 }),
-      rec({ id: 'theirs', employeeId: 'u-fin-2', status: 'Approved', paidDays: 9 }),
+      rec({ id: 'mine', employeeId: 'u-iqra', status: 'Approved', paidDays: 4 }),
+      rec({ id: 'theirs', employeeId: 'u-hasna', status: 'Approved', paidDays: 9 }),
     ];
-    const b = computeBalance('2024-01-15', '2025-01-15', records, { employeeId: 'u-sal' });
+    const b = computeBalance('2024-01-15', '2025-01-15', records, { employeeId: 'u-iqra' });
     expect(b.consumed).toBe(4);
   });
 
@@ -105,101 +105,91 @@ describe('splitPaidUnpaid — the over-balance rule', () => {
 });
 
 describe('approval chain — Line manager → HR → MD, with self-approval skipped', () => {
-  // The stage-1 approver is the applicant's DEPARTMENT manager (2026-08-03), so these cases are
-  // chosen by department: FIN is managed by u-fin (James) and ADM by u-adm (Ruth); SAL/MKT/ACA/HR
-  // have no manager at all. Each of the three ways MANAGER can resolve is covered below.
+  /**
+   * The organisation, 2026-08-04. Managers: Hafeez (Sales), Balu (Marketing), Raza (Finance),
+   * Sneha (HR, sole member), Amna (Operations). Academics and Administration have NO manager —
+   * their "head, for final approval" is an MD, which is the MD stage, not the manager stage.
+   * HR is Sneha; the MD stage is held JOINTLY by Raja and Maha.
+   */
   it('starts at MANAGER when the applicant department has a manager who is not them', () => {
-    expect(firstStageFor('u-fin-2')).toBe('MANAGER'); // Sofia (FIN) → James
-    expect(firstStageFor('u-sys')).toBe('MANAGER'); // Marcus (ADM) → Ruth
+    expect(firstStageFor('u-iqra')).toBe('MANAGER'); // Sales → Hafeez
+    expect(firstStageFor('u-hasna')).toBe('MANAGER'); // Finance → Raza
+    expect(firstStageFor('u-hussain')).toBe('MANAGER'); // Operations → Amna
+    expect(firstStageFor('u-sakshi')).toBe('MANAGER'); // Marketing → Balu
   });
 
   it('sends a LINE MANAGER’S OWN application straight to HR, then the MD', () => {
-    // The stakeholder's second route (2026-08-03): when the line manager themselves applies there
-    // is nobody above them inside their department, so the chain must start at HR and go on to the
-    // MD. It needs no separate branch — the self-approval skip already expresses it exactly, which
-    // is why this is a test rather than a feature.
-    expect(firstStageFor('u-sal')).toBe('HR'); // Priya manages Sales
-    expect(firstStageFor('u-mkt')).toBe('HR'); // Tom manages Marketing
-    expect(firstStageFor('u-fin')).toBe('HR'); // James manages Finance
-    expect(firstStageFor('u-adm')).toBe('HR'); // Ruth manages Administration
-    // …and HR's sign-off then hands it to the MD, completing the two-stage manager route.
-    expect(nextStageFor('u-sal', 'HR')).toBe('MD');
+    // Nobody sits above a line manager inside their own department, so their own stage skips and
+    // the chain starts at HR. No separate branch: the self-approval skip already expresses it.
+    expect(firstStageFor('u-hafeez')).toBe('HR'); // manages Sales
+    expect(firstStageFor('u-balu')).toBe('HR'); // manages Marketing
+    expect(firstStageFor('u-raza')).toBe('HR'); // manages Finance
+    expect(firstStageFor('u-amna')).toBe('HR'); // manages Operations
+    expect(nextStageFor('u-hafeez', 'HR')).toBe('MD');
+  });
+
+  it('skips MANAGER for a department that has none, starting at HR', () => {
+    // Academics and Administration name no line manager. `null` is a decision, not missing data.
+    expect(firstStageFor('u-radhika')).toBe('HR'); // Academics
+    expect(firstStageFor('u-susrita')).toBe('HR'); // Administration
+  });
+
+  it('walks MANAGER → HR → MD in order', () => {
+    expect(nextStageFor('u-iqra', 'MANAGER')).toBe('HR');
+    expect(nextStageFor('u-iqra', 'HR')).toBe('MD');
+    expect(nextStageFor('u-iqra', 'MD')).toBeNull();
+  });
+
+  it('ALWAYS hands over from HR to the MD — every employee, no exceptions', () => {
+    // HR signing off is never the end of an application; it is the handover to final approval.
+    // Exhaustive over the real cast so adding a person cannot introduce an early termination.
+    // With TWO MDs there is now no exception at all: each MD's own stage is covered by the other.
+    for (const u of MOCK_USERS) {
+      expect(nextStageFor(u.id, 'HR'), `${u.name} must go HR → MD`).toBe('MD');
+    }
+  });
+
+  it('gives HR’s own application no MANAGER and no HR stage — it begins at the MD', () => {
+    // Sneha is Human Resources' only member, so she is both its line manager and the HR approver.
+    // Two stages are hers, both skip, and the MDs decide.
+    expect(firstStageFor(HR_APPROVER_ID)).toBe('MD');
+  });
+
+  it('lets the OTHER Managing Director approve an MD’s own leave', () => {
+    // The single-MD model had to skip the MD stage for want of anyone eligible. With two, the
+    // stage runs and the co-director decides — which falls out of asking the SET who is eligible.
+    expect(lineManagerFor('u-raja')).toBeNull(); // nobody is above an MD
+    expect(firstStageFor('u-raja')).toBe('HR');
+    expect(nextStageFor('u-raja', 'HR')).toBe('MD');
+    expect(eligibleApprovers('MD', 'u-raja')).toEqual(['u-maha']);
+    expect(eligibleApprovers('MD', 'u-maha')).toEqual(['u-raja']);
   });
 
   it('treats an unknown employee as having no manager rather than guessing one', () => {
-    // Every department has a manager today, but `null` is still a representable state and the
-    // engine must not invent an approver for someone it cannot place. A wrong approver is worse
-    // than one fewer stage: it would route a colleague's leave to a stranger.
     expect(lineManagerFor('nobody-at-all')).toBeNull();
     expect(managerOfDepartment(undefined)).toBeNull();
   });
 
-  it('walks MANAGER → HR → MD in order', () => {
-    expect(nextStageFor('u-fin-2', 'MANAGER')).toBe('HR');
-    expect(nextStageFor('u-fin-2', 'HR')).toBe('MD');
-    expect(nextStageFor('u-fin-2', 'MD')).toBeNull();
-  });
-
-  it('skips a stage the applicant themselves occupies', () => {
-    // HR applicant (u-hr): the HR stage is their own, so MANAGER → MD.
-    expect(nextStageFor('u-hr', 'MANAGER')).toBe('MD');
-    // …and with no Human Resources manager either, their chain is the MD alone.
-    expect(firstStageFor(HR_APPROVER_ID)).toBe('MD');
-  });
-
-  it('sends the MD’s OWN application to HR and nowhere else', () => {
-    // Nobody is above the Managing Director, so there is no MANAGER stage to run — and their own
-    // MD stage self-skips. HR alone signs it off (stakeholder, 2026-08-03). Asserting BOTH ends
-    // matters: the first line proves the chain starts at HR, the second that it stops after.
-    expect(lineManagerFor(MD_APPROVER_ID)).toBeNull();
-    expect(firstStageFor(MD_APPROVER_ID)).toBe('HR');
-    expect(nextStageFor(MD_APPROVER_ID, 'HR')).toBeNull();
-  });
-
-  it('ALWAYS hands over from HR to the MD — every employee, no exceptions but the MD', () => {
-    // Exhaustive over the real user list rather than a sample, so adding a person cannot quietly
-    // introduce someone whose chain stops at HR. This is the hop the business cares most about:
-    // HR signing off is never the end of an application, it is the handover to final approval.
-    for (const u of MOCK_USERS) {
-      if (u.id === MD_APPROVER_ID) continue;
-      expect(nextStageFor(u.id, 'HR'), `${u.name} must go HR → MD`).toBe('MD');
-    }
-    // The MD is the SOLE exception, and a deliberate one: nobody is above them to approve it.
-    expect(nextStageFor(MD_APPROVER_ID, 'HR')).toBeNull();
-  });
-
-  it('reaches the MD from every possible starting point', () => {
-    // Both routes converge on the MD: the employee route via MANAGER, and the line manager's own
-    // route which begins at HR. Neither can terminate early.
-    expect(firstStageFor('u-fin-2')).toBe('MANAGER'); // employee route
-    expect(nextStageFor('u-fin-2', 'MANAGER')).toBe('HR');
-    expect(nextStageFor('u-fin-2', 'HR')).toBe('MD');
-    expect(firstStageFor('u-fin')).toBe('HR'); // line manager's own route
-    expect(nextStageFor('u-fin', 'HR')).toBe('MD');
-  });
-
-  it('treats the sysadmin as an ordinary employee now that the MD is their own identity', () => {
-    // Marcus used to BE the MD, which made the System Administrator the company's final approver.
-    // He is now just an Administration member: Ruth manages him, then HR, then the real MD.
-    expect(MD_APPROVER_ID).not.toBe('u-sys');
-    expect(firstStageFor('u-sys')).toBe('MANAGER');
-    expect(nextStageFor('u-sys', 'HR')).toBe('MD');
+  it('lets EITHER Managing Director decide an MD-stage application', () => {
+    const r = rec({ employeeId: 'u-iqra', stage: 'MD', status: 'Pending' });
+    expect(canDecide(r, 'u-raja')).toBe(true);
+    expect(canDecide(r, 'u-maha')).toBe(true);
+    expect(canDecide(r, 'u-sneha')).toBe(false); // HR cannot decide the MD's stage
   });
 
   it('lets only the current-stage approver decide', () => {
-    const r = rec({ employeeId: 'u-fin-2', stage: 'MANAGER', status: 'Pending' });
-    expect(canDecide(r, 'u-fin')).toBe(true); // Sofia's manager, via the Finance department
-    expect(canDecide(r, 'u-hr')).toBe(false); // HR cannot decide before the manager
-    expect(canDecide({ ...r, status: 'Approved', stage: null }, 'u-fin')).toBe(false);
+    const r = rec({ employeeId: 'u-hasna', stage: 'MANAGER', status: 'Pending' });
+    expect(canDecide(r, 'u-raza')).toBe(true); // Hasna's manager, via the Finance department
+    expect(canDecide(r, 'u-sneha')).toBe(false); // HR cannot decide before the manager
+    expect(canDecide({ ...r, status: 'Approved', stage: null }, 'u-raza')).toBe(false);
   });
 
   it('never routes a self-managed applicant to a MANAGER stage they alone could decide', () => {
-    // The strand guard. Priya IS the Sales manager, so a MANAGER stage on her own application
-    // resolves to HERSELF — and `canDecide` refuses self-approval, leaving a row nobody at all can
-    // move. The engine must therefore never PUT her there, which is what the second assertion pins.
-    const stranded = rec({ employeeId: 'u-sal', stage: 'MANAGER', status: 'Pending' });
-    const everyone = ['u-sal', 'u-adm', 'u-hr', 'u-sys', 'u-fin', 'u-fin-2'];
-    expect(everyone.some((id) => canDecide(stranded, id))).toBe(false);
-    expect(firstStageFor('u-sal')).not.toBe('MANAGER');
+    // Hafeez IS the Sales manager, so a MANAGER stage on his own application resolves to himself —
+    // and `canDecide` refuses self-approval, leaving a row nobody can move. The engine must
+    // therefore never put him there, which the second assertion pins.
+    const stranded = rec({ employeeId: 'u-hafeez', stage: 'MANAGER', status: 'Pending' });
+    expect(MOCK_USERS.some((u) => canDecide(stranded, u.id))).toBe(false);
+    expect(firstStageFor('u-hafeez')).not.toBe('MANAGER');
   });
 });

@@ -4,7 +4,14 @@
  * permission model). Identity (who) and authorization (what) are separate concerns.
  */
 
-export type DepartmentCode = 'SAL' | 'MKT' | 'ACA' | 'HR' | 'FIN' | 'ADM';
+/**
+ * `OPS` is a RATIFIED SEVENTH DEPARTMENT (stakeholder, 2026-08-04) — the Constitution fixed six,
+ * and this is a deliberate amendment, not a drift. It carries the ordinary "other departments"
+ * outbound routes (→ HR, → Academics) because those wildcards say *other departments* and
+ * Operations is now one; it is NOT a destination, because no inbound categories have been ratified
+ * for it, so nothing routes to Operations until they are.
+ */
+export type DepartmentCode = 'SAL' | 'MKT' | 'ACA' | 'HR' | 'FIN' | 'ADM' | 'OPS';
 
 export interface Department {
   readonly id: string;

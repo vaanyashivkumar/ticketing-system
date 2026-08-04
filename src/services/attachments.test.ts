@@ -17,7 +17,7 @@ import type { Session } from '@domain/types/auth.types';
  * dropped file never passes through the picker, so the `accept` attribute cannot filter it.
  */
 const priya: Session = {
-  user: MOCK_USERS.find((u) => u.id === 'u-sal')!,
+  user: MOCK_USERS.find((u) => u.id === 'u-hafeez')!,
   authenticatedAt: new Date().toISOString(),
 };
 

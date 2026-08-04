@@ -5,7 +5,7 @@ import { useLeaveStore } from '@stores/leaveStore';
 import { PageHeader } from '@components/common/PageHeader';
 import { mockUserById } from '@config/mockUsers.config';
 import {
-  LEAVE_TYPES, LEAVE_EMPLOYEES, STAGE_LABEL, approverForStage,
+  LEAVE_TYPES, LEAVE_EMPLOYEES, STAGE_LABEL, eligibleApprovers,
 } from '@config/leave.config';
 import { computeBalance, leaveDayCount, splitPaidUnpaid } from '@domain/leave/leaveEngine';
 import type { LeaveRecord, LeaveTypeName } from '@domain/leave/leaveTypes';
@@ -192,7 +192,14 @@ function stageProgress(r: LeaveRecord): string {
     return at ? `Rejected by ${STAGE_LABEL[at.stage]}` : 'Rejected';
   }
   if (r.status === 'Cancelled') return 'Withdrawn';
-  if (r.stage) return `Awaiting ${STAGE_LABEL[r.stage]} (${nameOf(approverForStage(r.stage, r.employeeId) ?? '')})`;
+  if (r.stage) {
+    // Names EVERY eligible approver, because the MD stage is held jointly and naming one of two
+    // would tell the applicant they are waiting on a specific person who may not be the decider.
+    const waiting = eligibleApprovers(r.stage, r.employeeId).map(nameOf).filter(Boolean);
+    return waiting.length
+      ? `Awaiting ${STAGE_LABEL[r.stage]} (${waiting.join(' or ')})`
+      : `Awaiting ${STAGE_LABEL[r.stage]}`;
+  }
   return '—';
 }
 
