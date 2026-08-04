@@ -33,13 +33,23 @@ interface NotificationState {
 
 /** API row -> the shape the notification UI already renders. */
 const toAppNotification = (n: {
-  id: string; ticketId: string | null; type: string; message: string; read: boolean; createdAt: string;
+  id: string; ticketId: string | null; leaveRequestId?: string | null;
+  type: string; message: string; read: boolean; createdAt: string;
 }): AppNotification => ({
   id: n.id,
   // Server-scoped: the feed IS the recipient's, so echoing an id back would be redundant.
   recipientId: '',
   ticketId: n.ticketId ?? '',
-  // The API message already embeds the ticket code, so there is no separate field to fill.
+  /**
+   * A leave notification points at a leave application, not a ticket, and the notification centre
+   * routes on this field. It was MISSING here while the server was already sending it: the row
+   * carried `leaveRequestId`, this mapper dropped it, so every leave notification in API mode fell
+   * through to the ticket link and opened `/app/tickets/` with an empty id — a dead link on the
+   * one message telling someone their leave had been decided. localStorage mode was unaffected,
+   * which is exactly why it survived: the two modes fill this shape by different routes.
+   */
+  ...(n.leaveRequestId ? { leaveId: n.leaveRequestId } : {}),
+  // The API message already embeds the ticket or leave code, so there is no separate field to fill.
   ticketCode: '',
   type: n.type as AppNotification['type'],
   message: n.message,
