@@ -1,5 +1,5 @@
-import { Fragment, useMemo } from 'react';
-import { Users, AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { Fragment, useMemo, useState } from 'react';
+import { Users, AlertTriangle, RefreshCw, Info, FilterX } from 'lucide-react';
 import { useAuth } from '@hooks/useAuth';
 import { useTicketStore } from '@stores/ticketStore';
 import { scopedTickets } from '@domain/dashboard/scope';
@@ -8,7 +8,12 @@ import { WorkFlowMap } from './components/WorkFlowMap';
 import { TEAM_KPIS, TEAM_COLUMNS } from '@config/team.config';
 import { MOCK_USERS } from '@config/mockUsers.config';
 import { managerOfDepartment, DEPARTMENT_MANAGERS } from '@config/leave.config';
-import { DEPARTMENTS } from '@config/departments.config';
+import { DEPARTMENTS, DEPARTMENT_LIST } from '@config/departments.config';
+import {
+  applyFilters, activeFilterCount, EMPTY_FILTERS, type TicketFilters,
+} from '@domain/filters/ticketFilters';
+import { ORDERED_STATUSES, statusLabel } from '@domain/workflow/statusEngine';
+import { ORDERED_PRIORITIES } from '@domain/workflow/priorityEngine';
 import { PageHeader } from '@components/common/PageHeader';
 
 /**
@@ -57,7 +62,30 @@ export function TeamPage() {
     [user, scope],
   );
   const scoped = useMemo(() => (session ? scopedTickets(session, tickets) : []), [session, tickets]);
-  const rows = useMemo(() => summariseTeam(scoped, team), [scoped, team]);
+
+  /**
+   * The same filter model Reports and the dashboard use — one vocabulary, not a third copy
+   * (B05 SS Filter Engine). Filtering runs AFTER the scope clamp and only ever narrows; "At a
+   * glance" stays on the page and simply recomputes over the filtered set, so the headline and
+   * the table can never disagree about which population they describe.
+   *
+   * A department manager gets NO department control: their clamp already is their department, and
+   * a select that could only echo it or return nothing is not a choice. The company view keeps
+   * it, and there it narrows the PEOPLE as well as the tickets — an MD filtering to Sales means
+   * "show me the Sales team", not "keep 27 rows but zero most of them".
+   */
+  const [f, setF] = useState<TicketFilters>(EMPTY_FILTERS);
+  const setFilter = <K extends keyof TicketFilters>(k: K, v: TicketFilters[K]) =>
+    setF((prevF) => ({ ...prevF, [k]: v }));
+  const nActive = activeFilterCount(f);
+  const visibleTeam = useMemo(
+    () => (scope === 'company' && f.department ? team.filter((m) => m.departmentCode === f.department) : team),
+    [team, scope, f.department],
+  );
+  const filtered = useMemo(() => applyFilters(scoped, f), [scoped, f]);
+  const categoryOptions = useMemo(() => [...new Set(scoped.map((t) => t.categoryLabel))].sort(), [scoped]);
+
+  const rows = useMemo(() => summariseTeam(filtered, visibleTeam), [filtered, visibleTeam]);
   const totals = useMemo(() => teamTotals(rows), [rows]);
 
   if (!session || !user) return null;
@@ -106,12 +134,89 @@ export function TeamPage() {
         </div>
       ) : (
         <>
+          {/* -- FILTERS ------------------------------------------------------------------- */}
+          <section aria-label="Filters" className="card card-p mt-6">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-label uppercase tracking-wide text-text-muted">Filters</p>
+              {nActive > 0 && (
+                <button type="button" className="btn-quiet text-caption" onClick={() => setF(EMPTY_FILTERS)}>
+                  <FilterX size={14} aria-hidden /> Clear ({nActive})
+                </button>
+              )}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {scope === 'company' && (
+                <label className="block">
+                  <span className="mb-1 block text-body-sm text-text">Department</span>
+                  <select
+                    className="input w-full"
+                    value={f.department}
+                    onChange={(e) => setFilter('department', e.target.value as TicketFilters['department'])}
+                  >
+                    <option value="">All</option>
+                    {DEPARTMENT_LIST.map((d) => (
+                      <option key={d.code} value={d.code}>{d.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">Category</span>
+                <select className="input w-full" value={f.category} onChange={(e) => setFilter('category', e.target.value)}>
+                  <option value="">All</option>
+                  {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">Priority</span>
+                <select className="input w-full" value={f.priority} onChange={(e) => setFilter('priority', e.target.value as TicketFilters['priority'])}>
+                  <option value="">All</option>
+                  {ORDERED_PRIORITIES.map((pr) => <option key={pr} value={pr}>{pr}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">Status</span>
+                <select className="input w-full" value={f.status} onChange={(e) => setFilter('status', e.target.value as TicketFilters['status'])}>
+                  <option value="">All</option>
+                  {ORDERED_STATUSES.map((st) => <option key={st} value={st}>{statusLabel(st)}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">Assignee</span>
+                <select className="input w-full" value={f.assignee} onChange={(e) => setFilter('assignee', e.target.value)}>
+                  <option value="">All</option>
+                  {[...visibleTeam].sort((a, b) => a.name.localeCompare(b.name)).map((m) => (
+                    <option key={m.id} value={m.name}>{m.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">SLA state</span>
+                <select className="input w-full" value={f.sla} onChange={(e) => setFilter('sla', e.target.value as TicketFilters['sla'])}>
+                  <option value="">All</option>
+                  <option value="OnTrack">On track</option>
+                  <option value="DueSoon">Due soon</option>
+                  <option value="Overdue">Overdue</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">Created from</span>
+                <input type="date" className="input w-full" value={f.from} onChange={(e) => setFilter('from', e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-body-sm text-text">Created to</span>
+                <input type="date" className="input w-full" value={f.to} onChange={(e) => setFilter('to', e.target.value)} />
+              </label>
+            </div>
+          </section>
+
           {/* ── AT A GLANCE ─────────────────────────────────────────────────────────────── */}
           <section aria-labelledby="team-glance-h" className="mt-6">
             <h2 id="team-glance-h" className="text-h3 text-text">At a glance</h2>
             <p className="mt-1 text-body-sm text-text-secondary">
               Across {totals.people} {totals.people === 1 ? 'person' : 'people'}
               {scope === 'company' ? ' across every department' : ` in ${deptName}`}.
+              {nActive > 0 && ' Filtered - the figures describe only what matches.'}
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {TEAM_KPIS.map((k) => {
@@ -204,7 +309,7 @@ export function TeamPage() {
                 ? 'Open a department to see its people, and open a person to see where their work lands.'
                 : `Who raised the work, and who is holding it now. People outside ${deptName} are shown as their department.`}
             </p>
-            <WorkFlowMap tickets={scoped} team={team} scope={scope} rootLabel={rootLabel} />
+            <WorkFlowMap tickets={filtered} team={visibleTeam} scope={scope} rootLabel={rootLabel} />
           </section>
 
           <p className="mt-8 flex items-start gap-2 text-caption text-text-muted">

@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
-import { MOCK_USERS } from '@config/mockUsers.config';
+import { ArrowRight, ShieldCheck, UserCog, Loader2 } from 'lucide-react';
+import { MOCK_USERS, titleOf } from '@config/mockUsers.config';
+import { DEPARTMENT_MANAGERS } from '@config/leave.config';
 import { UserService } from '@services/userService';
 import { DEPARTMENTS } from '@config/departments.config';
 import { useAuth } from '@hooks/useAuth';
@@ -241,6 +242,13 @@ export function LoginPage() {
                 {MOCK_USERS.map((u) => {
                   const dept = DEPARTMENTS[u.departmentCode];
                   const isSysadmin = u.role.capabilities.includes('SUPER_ADMIN');
+                  /**
+                   * The manager chip mirrors the sysadmin one, and both read a DATA fact, never a
+                   * title: `Department.managerId` decides who manages, exactly as the capability
+                   * list decides who governs. Hafeez is titled "Sales Executive & Manager" but the
+                   * chip appears because he holds the field, not because his title says so.
+                   */
+                  const isManager = DEPARTMENT_MANAGERS[u.departmentCode] === u.id;
                   // A deactivated account cannot sign in (D04 #36). Shown, but disabled — so the
                   // administrative action is visibly in force rather than silently ignored.
                   const active = UserService.isActive(u.id);
@@ -263,6 +271,11 @@ export function LoginPage() {
                                 <ShieldCheck size={11} aria-hidden /> Sysadmin
                               </span>
                             )}
+                            {isManager && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-accent-tint px-1.5 py-0.5 text-label-sm text-accent-text">
+                                <UserCog size={11} aria-hidden /> Manager
+                              </span>
+                            )}
                             {!active && (
                               <span className="rounded-full bg-surface-sunken px-1.5 py-0.5 text-label-sm text-text-secondary">
                                 Deactivated
@@ -270,8 +283,7 @@ export function LoginPage() {
                             )}
                           </span>
                           <span className="block text-caption text-text-muted">
-                            {dept.name}
-                            {dept.isDestination ? ' · receives tickets' : ' · raises tickets'}
+                            {titleOf(u.id) ? `${titleOf(u.id)} · ${dept.name}` : dept.name}
                           </span>
                         </span>
                         {active && (
