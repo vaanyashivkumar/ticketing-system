@@ -181,7 +181,14 @@ export function WorkFlowMap({
         thing it must never do is push the page itself sideways.
       */}
       <div className="table-shell overflow-x-auto p-4">
-        <div ref={stageRef} className="relative" style={{ width: layout.width, height: layout.height }}>
+        {/* The canvas itself eases to its new size, so a branch opening reads as the map growing
+            rather than the container snapping. CSS, not GSAP: the resting size is the styled size,
+            so an environment with no animation simply has the right dimensions immediately. */}
+        <div
+          ref={stageRef}
+          className="relative transition-[width,height] duration-base ease-standard"
+          style={{ width: layout.width, height: layout.height }}
+        >
           <svg
             className="pointer-events-none absolute inset-0"
             width={layout.width}
@@ -216,14 +223,27 @@ export function WorkFlowMap({
                   ? { 'data-anim': 'move', 'data-glide-dx': anim.dx, 'data-glide-dy': anim.dy }
                   : {};
             const label = `${node.label}, ${node.count} ${node.count === 1 ? 'request' : 'requests'}`;
-            const common = `absolute flex items-center gap-2 rounded-md border px-3 text-body-sm ${KIND_CLASS[node.kind]}`;
+            /**
+             * `px-2`/`gap-1.5` are 16px/12px ON THE 8-POINT REMAP — the first version wrote
+             * `px-3`/`gap-2` reading them as stock Tailwind (12/8px), and the remapped 24/16px
+             * quietly ate ~90px of a 168px node, which is what truncated "All departments" to
+             * "All depa…" on screen. Pills, not rectangles, per the NotebookLM reference.
+             */
+            const common = `absolute flex items-center gap-1.5 rounded-full border px-2 text-body-sm shadow-e1 ${KIND_CLASS[node.kind]}`;
+            const chip = `shrink-0 rounded-full px-1.5 text-label-sm tabular-nums ${
+              node.kind === 'root'
+                ? 'bg-white/20 text-primary-on'
+                : node.kind === 'destination'
+                  ? 'bg-surface text-text-secondary'
+                  : 'bg-surface-sunken text-text-secondary'
+            }`;
             const style = { left: x, top: y, width: NODE_W, height: NODE_H };
 
             if (!hasChildren) {
               return (
                 <div key={node.id} className={common} style={style} {...animAttrs}>
-                  <span className="min-w-0 flex-1 truncate">{node.label}</span>
-                  <span className="shrink-0 tabular-nums">{node.count}</span>
+                  <span className="min-w-0 flex-1 truncate" title={node.label}>{node.label}</span>
+                  <span className={chip}>{node.count}</span>
                 </div>
               );
             }
@@ -234,7 +254,7 @@ export function WorkFlowMap({
                 onClick={() => toggle(node.id)}
                 aria-expanded={isExpanded}
                 aria-label={`${label}. ${isExpanded ? 'Collapse' : 'Expand'}`}
-                className={`${common} text-left transition-colors duration-fast hover:border-primary`}
+                className={`${common} text-left transition-[color,border-color,box-shadow] duration-fast hover:border-primary hover:shadow-e2`}
                 style={style}
                 {...animAttrs}
               >
@@ -243,8 +263,8 @@ export function WorkFlowMap({
                   aria-hidden
                   className={`shrink-0 transition-transform duration-fast ${isExpanded ? 'rotate-90' : ''}`}
                 />
-                <span className="min-w-0 flex-1 truncate">{node.label}</span>
-                <span className="shrink-0 tabular-nums">{node.count}</span>
+                <span className="min-w-0 flex-1 truncate" title={node.label}>{node.label}</span>
+                <span className={chip}>{node.count}</span>
               </button>
             );
           })}

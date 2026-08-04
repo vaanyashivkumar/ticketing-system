@@ -380,7 +380,8 @@ export function fanOut(targets: Target, opts: { delay?: number } = {}) {
       x: (_i: number, el: Element) => Number((el as HTMLElement).dataset.spawnDx ?? 0),
       y: (_i: number, el: Element) => Number((el as HTMLElement).dataset.spawnDy ?? 0),
       opacity: 0,
-      scale: 0.82,
+      // Barely-scaled: the movement carries the story, the scale only softens the first frame.
+      scale: 0.96,
       transformOrigin: 'left center',
     },
     withSafetyNet(targets, tween({
@@ -388,13 +389,13 @@ export function fanOut(targets: Target, opts: { delay?: number } = {}) {
       duration: duration.slow,
       delay: opts.delay ?? 0,
       /**
-       * `back.out`, not the house standard ease — the one deliberate departure, and the thing
-       * that makes a fan read as a mind map rather than a fade-in (stakeholder reference,
-       * 2026-08-04): each child overshoots its resting place by a few pixels and settles back.
-       * 1.4 is mild; past ~2 the overshoot collides with neighbouring rows.
+       * A soft settle, deliberately WITHOUT overshoot. This briefly shipped as `back.out(1.4)`
+       * and the stakeholder's verdict was "subtle, smooth, refined" — the NotebookLM reference
+       * UNFURLS rather than bounces: children slide out of the parent and decelerate into place,
+       * and any springiness reads as cartoon next to it. `ease.out` is the house long-settle.
        */
-      ease: 'back.out(1.4)',
-      stagger: { amount: 0.22, from: 'start' },
+      ease: ease.out,
+      stagger: { amount: 0.15, from: 'start' },
       immediateRender: false,
       overwrite: 'auto',
       clearProps: 'opacity,transform',

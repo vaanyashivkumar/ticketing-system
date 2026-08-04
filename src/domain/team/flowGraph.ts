@@ -144,7 +144,13 @@ export function buildFlowGraph(
 
 // ── Layout ────────────────────────────────────────────────────────────────────────────────────
 
-export const NODE_W = 168;
+/**
+ * 204, not the original 168: "All departments" and "Human Resources" truncated to "All depa…" at
+ * the old width (stakeholder screenshot, 2026-08-04), and a mind map whose nodes cannot say their
+ * own names is decoration. Sized for the longest real label — department names — plus the
+ * chevron, count chip and padding; person names are all shorter.
+ */
+export const NODE_W = 204;
 export const NODE_H = 40;
 export const COL_GAP = 72;
 export const ROW_GAP = 12;
