@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
-import { ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronRight, Maximize2, Minimize2, ZoomIn, ZoomOut, Expand, X } from 'lucide-react';
 import type { Ticket } from '@domain/types/ticket.types';
 import type { TeamMember, TeamScope } from '@domain/team/teamMetrics';
 import {
@@ -150,6 +150,61 @@ export function WorkFlowMap({
   );
   const allOpen = allIds.every((id) => expanded.has(id));
 
+  /**
+   * Zoom is a transform on the stage, never a re-layout: the tree's arithmetic stays in one
+   * coordinate space and GSAP's child transforms compose under the parent scale untouched. The
+   * spacer div carries the SCALED dimensions so the scroll container measures what the eye sees.
+   */
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 2;
+  const [zoom, setZoom] = useState(1);
+  const zoomBy = (factor: number) =>
+    setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * factor * 100) / 100)));
+
+  /**
+   * Full screen is an IN-APP dialog on the `z-modal` layer, following the drawer's real-modal
+   * contract (D04 #22): Tab wraps at both ends, Escape closes, focus lands on Close when it opens
+   * and returns to the trigger when it shuts. Not the browser Fullscreen API — that prompts,
+   * varies by browser, and can refuse; a dialog is the same everywhere and keeps the app's own
+   * chrome available.
+   */
+  const [full, setFull] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!full) return;
+    closeRef.current?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      /**
+       * Read at CLEANUP time on purpose — the lint rule's usual advice (capture the node when the
+       * effect runs) is wrong for this dialog. Opening it UNMOUNTS the inline layout, trigger
+       * button included, so a captured node would be dead by close. Refs attach during the commit
+       * and passive cleanups run after it, so by the time this executes the inline layout has
+       * re-mounted and `triggerRef.current` is the NEW Full-screen button — the one thing focus
+       * should land on.
+       */
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      triggerRef.current?.focus();
+    };
+  }, [full]);
+
+  const onDialogKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { setFull(false); return; }
+    if (e.key !== 'Tab') return;
+    const focusables = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])');
+    if (!focusables?.length) return;
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    // Wrap at both ends — what makes aria-modal true rather than aspirational.
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+
   if (graph.count === 0) {
     return (
       <div className="card card-p mt-3">
@@ -160,34 +215,46 @@ export function WorkFlowMap({
     );
   }
 
-  return (
-    <div className="mt-3">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-caption text-text-muted">
-          Select a box to open or close its branch.
-        </p>
-        <button
-          type="button"
-          className="btn-quiet text-caption"
-          onClick={() => setExpanded(allOpen ? new Set([graph.id]) : new Set(allIds))}
-        >
-          {allOpen ? <Minimize2 size={14} aria-hidden /> : <Maximize2 size={14} aria-hidden />}
-          {allOpen ? 'Collapse all' : 'Expand all'}
-        </button>
-      </div>
+  const zoomCluster = (
+    <div className="flex items-center gap-1" role="group" aria-label="Zoom">
+      <button type="button" className="btn-quiet px-1.5" onClick={() => zoomBy(1 / 1.25)} disabled={zoom <= ZOOM_MIN} aria-label="Zoom out">
+        <ZoomOut size={15} aria-hidden />
+      </button>
+      <button type="button" className="btn-quiet px-1.5 text-caption tabular-nums" onClick={() => setZoom(1)} aria-label="Reset zoom to 100%">
+        {Math.round(zoom * 100)}%
+      </button>
+      <button type="button" className="btn-quiet px-1.5" onClick={() => zoomBy(1.25)} disabled={zoom >= ZOOM_MAX} aria-label="Zoom in">
+        <ZoomIn size={15} aria-hidden />
+      </button>
+    </div>
+  );
 
-      {/*
-        The map scrolls in its OWN container. A deep branch is wider than the page, and the one
-        thing it must never do is push the page itself sideways.
-      */}
-      <div className="table-shell overflow-x-auto p-4">
-        {/* The canvas itself eases to its new size, so a branch opening reads as the map growing
-            rather than the container snapping. CSS, not GSAP: the resting size is the styled size,
-            so an environment with no animation simply has the right dimensions immediately. */}
+  const expandAllButton = (
+    <button
+      type="button"
+      className="btn-quiet text-caption"
+      onClick={() => setExpanded(allOpen ? new Set([graph.id]) : new Set(allIds))}
+    >
+      {allOpen ? <Minimize2 size={14} aria-hidden /> : <Maximize2 size={14} aria-hidden />}
+      {allOpen ? 'Collapse all' : 'Expand all'}
+    </button>
+  );
+
+  /**
+   * One canvas, rendered inline or inside the dialog — never two, so the two presentations cannot
+   * drift. The inner stage keeps its UNSCALED dimensions and scales visually; the spacer div holds
+   * the scaled footprint so scrollbars are honest at every zoom.
+   */
+  const canvas = (
+    <div className={full
+      ? 'min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-surface p-4'
+      : 'table-shell max-h-[70vh] overflow-auto p-4'}
+    >
+      <div style={{ width: Math.ceil(layout.width * zoom), height: Math.ceil(layout.height * zoom) }}>
         <div
           ref={stageRef}
-          className="relative transition-[width,height] duration-base ease-standard"
-          style={{ width: layout.width, height: layout.height }}
+          className="relative origin-top-left transition-[width,height,transform] duration-base ease-standard"
+          style={{ width: layout.width, height: layout.height, transform: `scale(${zoom})` }}
         >
           <svg
             className="pointer-events-none absolute inset-0"
@@ -270,6 +337,49 @@ export function WorkFlowMap({
           })}
         </div>
       </div>
+    </div>
+  );
+
+  if (full) {
+    return (
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="How work flows — full screen"
+        onKeyDown={onDialogKeyDown}
+        className="fixed inset-0 z-modal flex flex-col bg-bg p-4 sm:p-6"
+      >
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-body-medium text-text">How work flows</p>
+          <div className="flex items-center gap-2">
+            {zoomCluster}
+            {expandAllButton}
+            <button ref={closeRef} type="button" className="btn-neutral" onClick={() => setFull(false)}>
+              <X size={14} aria-hidden /> Close
+            </button>
+          </div>
+        </div>
+        {canvas}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-caption text-text-muted">
+          Select a box to open or close its branch.
+        </p>
+        <div className="flex items-center gap-2">
+          {zoomCluster}
+          {expandAllButton}
+          <button ref={triggerRef} type="button" className="btn-quiet text-caption" onClick={() => setFull(true)}>
+            <Expand size={14} aria-hidden /> Full screen
+          </button>
+        </div>
+      </div>
+      {canvas}
     </div>
   );
 }
