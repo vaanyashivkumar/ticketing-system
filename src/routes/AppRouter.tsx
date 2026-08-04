@@ -8,6 +8,7 @@ import { UnauthorizedPage } from '@features/auth/UnauthorizedPage';
 import { CreateTicketPage } from '@features/tickets/CreateTicketPage';
 import { MyTicketsPage } from '@features/tickets/MyTicketsPage';
 import { DepartmentQueuePage } from '@features/tickets/DepartmentQueuePage';
+import { TeamPage } from '@features/team/TeamPage';
 import { TicketDetailsPage } from '@features/tickets/TicketDetailsPage';
 import { DashboardPage } from '@features/dashboard/DashboardPage';
 import { LeavePage } from '@features/leave/LeavePage';
@@ -54,6 +55,9 @@ export const router = createBrowserRouter([
       { path: 'leave', element: <LeavePage /> },
       // Destination departments only — pure requesters get a 403 on deep-link.
       { path: 'queue', element: guard(<DepartmentQueuePage />, 'VIEW_DEPARTMENT_QUEUE') },
+      // Line managers only. VIEW_TEAM is derived from Department.managerId, so the guard follows a
+      // reassignment automatically — there is no second place recording who may open this.
+      { path: 'team', element: guard(<TeamPage />, 'VIEW_TEAM') },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'reports', element: guard(<ReportsPage />, 'VIEW_REPORTS') },
       // Profile and Settings are deliberately ABSENT (D01).

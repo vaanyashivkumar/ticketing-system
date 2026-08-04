@@ -106,6 +106,12 @@ export const LEAVE_EMPLOYEES: Readonly<Record<string, LeaveEmployee>> = {
   'u-adm': { joinDate: '2019-05-06' }, // Ruth Bello
   'u-sys': { joinDate: '2018-04-02' }, // Marcus Vane
   'u-md': { joinDate: '2017-01-09' }, // Rowan Ashcroft (MD — longest service, as you'd expect)
+  // The four second-members (2026-08-04). Recent joiners, so their accrued balances differ
+  // visibly from their managers' and the Team view has something other than uniform rows.
+  'u-sal-2': { joinDate: '2025-04-14' }, // Daniel Okoro
+  'u-mkt-2': { joinDate: '2024-10-07' }, // Yusuf Kaya
+  'u-aca-2': { joinDate: '2025-01-20' }, // Aisha Nabil
+  'u-hr-2': { joinDate: '2024-06-03' }, // Grace Lim
 };
 
 /** The line manager of a department, or null when it has none (the chain then starts at HR). */

@@ -42,7 +42,15 @@ export type Derivation =
   /** Held because the user carries the SUPER_ADMIN capability. */
   | 'sysadmin-capability'
   /** Computed per ticket from the actor's relationship to its route. Never a standing grant. */
-  | 'route-relationship';
+  | 'route-relationship'
+  /**
+   * Held because this user IS their department's line manager (`DEPARTMENT_MANAGERS`).
+   *
+   * A comparison against a data field, NOT a stored role — the distinction BUSINESS_DOMAIN_MODEL
+   * §2.3 turns on. Nothing maps a role name to a permission set; reassign the department's
+   * manager and the grant follows, because there is no second place recording it.
+   */
+  | 'department-manager';
 
 export interface PermissionEntry {
   readonly id: StaticPermission | TicketPermission;
@@ -70,6 +78,7 @@ export const PERMISSION_CATALOGUE: readonly PermissionEntry[] = [
   { id: 'VIEW_REPORTS', name: 'View reports', description: 'Open Reports. The DATA is scope-clamped separately — this only opens the page.', category: 'Reporting', risk: 'low', derivation: 'base', kind: 'static', enforcedBy: 'Route guard on /app/reports' },
   { id: 'EXPORT_REPORTS', name: 'Export reports', description: 'Download the filtered ticket set as CSV.', category: 'Reporting', risk: 'medium', derivation: 'base', kind: 'static', enforcedBy: 'Export buttons; API GET /reports/export' },
   { id: 'VIEW_DEPARTMENT_QUEUE', name: 'View department queue', description: 'See work routed to your department. Only departments that receive tickets hold it.', category: 'Visibility', risk: 'medium', derivation: 'destination-department', kind: 'static', enforcedBy: 'Route guard on /app/queue' },
+  { id: 'VIEW_TEAM', name: 'View team', description: 'Open the Team view for the department you manage. Opens a page only — it re-cuts tickets the manager can already see, and grants no new visibility.', category: 'Visibility', risk: 'low', derivation: 'department-manager', kind: 'static', enforcedBy: 'Route guard on /app/team; sidebar navigation' },
 
   { id: 'MANAGE_USERS', name: 'Manage users', description: 'View accounts and activate or deactivate them. Deactivation ends live sessions immediately.', category: 'Administration', risk: 'high', derivation: 'sysadmin-capability', kind: 'static', enforcedBy: 'Route guard on /admin/users; API GET/PATCH /admin/users' },
   {
@@ -116,6 +125,7 @@ export const DERIVATION_LABEL: Readonly<Record<Derivation, string>> = {
   'destination-department': 'Departments that receive tickets',
   'sysadmin-capability': 'Holders of the system-administration capability',
   'route-relationship': 'Computed per ticket from the route relationship',
+  'department-manager': 'The line manager of their own department',
 };
 
 /**

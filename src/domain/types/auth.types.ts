@@ -52,6 +52,15 @@ export type StaticPermission =
   | 'VIEW_NOTIFICATIONS'
   | 'VIEW_REPORTS'
   | 'EXPORT_REPORTS'
+  /**
+   * Open the Team view. Held by whoever is their DEPARTMENT'S line manager
+   * (`DEPARTMENT_MANAGERS`) — a data fact, not a stored role, and the same fact the leave chain
+   * already resolves its stage-1 approver from.
+   *
+   * It opens a PAGE and grants no new visibility: a manager already sees every ticket their
+   * department sends or receives, so the Team view narrows that set rather than widening it.
+   */
+  | 'VIEW_TEAM'
   | 'MANAGE_USERS'
   | 'MANAGE_ROLES'
   | 'MANAGE_CATEGORIES'

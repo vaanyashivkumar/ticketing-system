@@ -78,6 +78,20 @@ export const MOCK_USERS: readonly User[] = [
    * Not in USER_PERSONAS.md and carries no behaviour model: do not cite it as canonical.
    */
   mk('u-md', 'Rowan Ashcroft', 'rowan.ashcroft@demo.test', 'ADM', 'RA'),
+
+  /**
+   * (C) DEMO FIXTURES, 2026-08-04 — a second member for the four single-person departments.
+   *
+   * Same footing as Sofia Nowak: NOT canonical personas, no behaviour model, absent from
+   * USER_PERSONAS.md. They exist because the manager's Team view is meaningless without anyone to
+   * manage — with one person per department, four of the six line managers had an empty team, so
+   * the feature could not be demonstrated or usefully tested at all. Each reports to their own
+   * department's manager by the ordinary rule; no special-casing anywhere.
+   */
+  mk('u-sal-2', 'Daniel Okoro', 'daniel.okoro@demo.test', 'SAL', 'DO'),
+  mk('u-mkt-2', 'Yusuf Kaya', 'yusuf.kaya@demo.test', 'MKT', 'YK'),
+  mk('u-aca-2', 'Aisha Nabil', 'aisha.nabil@demo.test', 'ACA', 'AN'),
+  mk('u-hr-2', 'Grace Lim', 'grace.lim@demo.test', 'HR', 'GL'),
 ];
 
 export function mockUserById(id: string): User | undefined {

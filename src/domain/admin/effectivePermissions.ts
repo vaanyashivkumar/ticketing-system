@@ -93,5 +93,13 @@ function explain(
         : 'Not granted: this account does not hold the system-administration capability. It is granted per user, not by department.';
     case 'route-relationship':
       return DERIVATION_LABEL['route-relationship'];
+    /**
+     * Answered from `granted` rather than a new parameter: whether this account is the manager
+     * IS the grant, so threading the fact separately would be a second place to get it wrong.
+     */
+    case 'department-manager':
+      return granted
+        ? `Granted because this account is ${departmentName}’s line manager.`
+        : `Not granted: this account is not ${departmentName}’s line manager. It follows the department’s manager, so it moves with a reassignment rather than being held.`;
   }
 }

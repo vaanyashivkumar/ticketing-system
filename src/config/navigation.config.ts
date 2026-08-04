@@ -49,6 +49,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { id: 'leave', label: 'Leave', path: '/app/leave', icon: CalendarDays, permission: 'CREATE_TICKET' },
       // Department Queue: destination departments only (Academics/HR/Finance).
       { id: 'queue', label: 'Department Queue', path: '/app/queue', icon: Inbox, permission: 'VIEW_DEPARTMENT_QUEUE' },
+      // Team: whoever is their department's line manager. Derived from Department.managerId, so
+      // the item appears and disappears with the data — no role, nothing to keep in step.
+      { id: 'team', label: 'Team', path: '/app/team', icon: Users, permission: 'VIEW_TEAM' },
     ],
   },
   {

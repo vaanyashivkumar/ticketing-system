@@ -6,6 +6,7 @@ import type {
   TicketAuthView,
 } from '@domain/types/auth.types';
 import { DEPARTMENTS } from '@config/departments.config';
+import { managerOfDepartment } from '@config/leave.config';
 import {
   BASE_STATIC_PERMISSIONS,
   DESTINATION_STATIC_PERMISSIONS,
@@ -33,6 +34,15 @@ export function resolveStaticPermissions(session: Session): ReadonlySet<StaticPe
   const dept = DEPARTMENTS[session.user.departmentCode];
   if (dept.isDestination) DESTINATION_STATIC_PERMISSIONS.forEach((p) => perms.add(p));
   if (isSysadmin(session)) SYSADMIN_STATIC_PERMISSIONS.forEach((p) => perms.add(p));
+  /**
+   * The Team view, for whoever manages this department.
+   *
+   * Derived from the SAME data fact the leave chain uses for its stage-1 approver — a comparison
+   * against `Department.managerId`, not a stored role and not a role→permission table
+   * (BUSINESS_DOMAIN_MODEL §2.3 forbids those, and this deliberately is not one). Reassign the
+   * department's manager and the grant moves with it, because there is nothing else to update.
+   */
+  if (managerOfDepartment(session.user.departmentCode) === session.user.id) perms.add('VIEW_TEAM');
   return perms;
 }
 
