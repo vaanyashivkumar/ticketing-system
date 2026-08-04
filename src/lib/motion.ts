@@ -353,6 +353,132 @@ export function scrollReveal(
   );
 }
 
+/* ── The mind-map primitives (Team → "How work flows") ──────────────────────────────────────────
+ *
+ * Three moves, and between them the whole NotebookLM idiom: children FAN OUT of their parent,
+ * survivors GLIDE to their re-laid-out positions, and connectors DRAW themselves in. They live
+ * here, not in the component, because this module is where the two invariants are enforced —
+ * reduced motion collapses every tween to zero duration, and `fromTo` + `immediateRender: false`
+ * means a document that never ticks (the hidden preview pane; a background tab) simply shows the
+ * final layout. The map must be CORRECT with animation absent, and animated only as a bonus.
+ *
+ * Per-element geometry rides on data attributes (`data-spawn-dx` etc.) read lazily by
+ * function-valued `from` vars. The alternative — one tween per node — creates N timelines for a
+ * branch of N children and loses the single stagger that makes a fan look like a fan.
+ */
+
+/**
+ * A branch fanning out of its parent. Each target starts AT its parent (offset in
+ * `data-spawn-dx`/`data-spawn-dy`), slightly small and transparent, and settles into its own
+ * position. Stagger is budgeted (`amount`), so "Expand all" cascades quickly rather than making
+ * the last of thirty nodes wait its full turn.
+ */
+export function fanOut(targets: Target, opts: { delay?: number } = {}) {
+  return gsap.fromTo(
+    targets,
+    {
+      x: (_i: number, el: Element) => Number((el as HTMLElement).dataset.spawnDx ?? 0),
+      y: (_i: number, el: Element) => Number((el as HTMLElement).dataset.spawnDy ?? 0),
+      opacity: 0,
+      scale: 0.92,
+      transformOrigin: 'left center',
+    },
+    withSafetyNet(targets, tween({
+      x: 0, y: 0, opacity: 1, scale: 1,
+      duration: duration.slow,
+      delay: opts.delay ?? 0,
+      ease: ease.out,
+      stagger: { amount: 0.18, from: 'start' },
+      immediateRender: false,
+      overwrite: 'auto',
+      clearProps: 'opacity,transform',
+    })),
+  );
+}
+
+/**
+ * A surviving node gliding from where it WAS to where the new layout puts it. React has already
+ * committed the destination (left/top), so the tween plays the journey backwards-to-forwards:
+ * start offset by `data-glide-dx`/`data-glide-dy` — old position minus new — and settle at zero.
+ * An unticked document therefore rests at the correct new position, untouched.
+ */
+export function glide(targets: Target) {
+  return gsap.fromTo(
+    targets,
+    {
+      x: (_i: number, el: Element) => Number((el as HTMLElement).dataset.glideDx ?? 0),
+      y: (_i: number, el: Element) => Number((el as HTMLElement).dataset.glideDy ?? 0),
+    },
+    withSafetyNet(targets, tween({
+      x: 0, y: 0,
+      duration: duration.base,
+      ease: ease.standard,
+      immediateRender: false,
+      overwrite: 'auto',
+      clearProps: 'transform',
+    })),
+  );
+}
+
+/**
+ * A connector drawing itself from parent to child. Dash-gap the path at its own length and reel
+ * the offset in; the safety net and `clearProps` return the stroke to the stylesheet's solid line,
+ * so an interrupted or never-ticked draw leaves a complete connector, not a missing one.
+ * `getTotalLength` is geometry, not rendering — it works even where no frame ever composites.
+ */
+export function drawIn(targets: Target, opts: { delay?: number } = {}) {
+  const len = (el: Element): number => (el as SVGPathElement).getTotalLength();
+  return gsap.fromTo(
+    targets,
+    {
+      strokeDasharray: (_i: number, el: Element) => `${len(el)} ${len(el)}`,
+      strokeDashoffset: (_i: number, el: Element) => len(el),
+      opacity: 0.4,
+    },
+    tween({
+      strokeDashoffset: 0,
+      opacity: 1,
+      duration: duration.slow,
+      delay: opts.delay ?? 0,
+      ease: ease.out,
+      stagger: { amount: 0.18, from: 'start' },
+      immediateRender: false,
+      overwrite: 'auto',
+      clearProps: 'strokeDasharray,strokeDashoffset,opacity',
+      // Not `withSafetyNet`: that clears opacity/transform, and a half-drawn stroke needs its
+      // DASH props stripped too or an interrupted draw leaves a permanently partial line.
+      onInterrupt: () => {
+        gsap.set(targets, { clearProps: 'strokeDasharray,strokeDashoffset,opacity' });
+      },
+    }),
+  );
+}
+
+/**
+ * A connector re-shaping as its ends move. Every path here is `M … C …` with the same command
+ * count, so GSAP interpolates the numbers directly — the curve bends through the intermediate
+ * shapes instead of snapping.
+ *
+ * BOTH endpoints ride on data attributes (`data-prev-d`, `data-next-d`), never on the live `d`.
+ * Reading the destination from the attribute would be order-dependent: once the `from` shape has
+ * been applied, the attribute IS the old shape, and a lazily-evaluated destination would read it
+ * back and morph nowhere. React has already committed the new `d`, which is what an unticked
+ * document keeps showing.
+ */
+export function morphPath(targets: Target) {
+  return gsap.fromTo(
+    targets,
+    { attr: { d: (_i: number, el: Element) => (el as SVGPathElement).dataset.prevD ?? '' } },
+    tween({
+      attr: { d: (_i: number, el: Element) => (el as SVGPathElement).dataset.nextD ?? '' },
+      duration: duration.base,
+      ease: ease.standard,
+      immediateRender: false,
+      overwrite: 'auto',
+    }),
+  );
+}
+
 /** Kill every tween on a target — for unmount, so a running tween never writes to a dead node. */
 export function killMotion(target: Target) {
   gsap.killTweensOf(target);

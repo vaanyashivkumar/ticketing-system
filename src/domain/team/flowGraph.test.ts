@@ -107,6 +107,17 @@ describe('laying it out', () => {
     expect(iqra.y).toBe(mid);
   });
 
+  it('records each node’s parent, and null only for the root', () => {
+    // The animation layer spawns an entering child AT its parent — a wrong parentId would make
+    // nodes fly in from unrelated corners of the map, which no other test would notice.
+    const l = layoutFlowGraph(graph, new Set(['root', 'p:u-iqra']));
+    for (const n of l.nodes) {
+      if (n.node.id === 'root') expect(n.parentId).toBeNull();
+      else if (n.depth === 1) expect(n.parentId).toBe('root');
+      else expect(n.parentId).toBe('p:u-iqra');
+    }
+  });
+
   it('returns nodes in READING order, parents before their children', () => {
     // The nodes are absolutely positioned, so DOM order is what a screen reader follows. Positions
     // must be computed children-first, so without a re-order every leaf would be announced before

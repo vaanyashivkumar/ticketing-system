@@ -157,6 +157,13 @@ export interface PositionedNode {
   readonly y: number;
   readonly hasChildren: boolean;
   readonly isExpanded: boolean;
+  /**
+   * The id of the node this one branches FROM, or null for the root. The animation layer needs it:
+   * an entering child spawns at its parent's position and fans out to its own, and without the
+   * parent recorded here the component would have to re-derive the tree shape the layout already
+   * walked.
+   */
+  readonly parentId: string | null;
 }
 
 export interface FlowEdge {
@@ -186,7 +193,7 @@ export function layoutFlowGraph(root: FlowNode, expanded: ReadonlySet<string>): 
   let nextRow = 0;
   let maxDepth = 0;
 
-  const place = (node: FlowNode, depth: number): number => {
+  const place = (node: FlowNode, depth: number, parentId: string | null): number => {
     maxDepth = Math.max(maxDepth, depth);
     const open = expanded.has(node.id) && node.children.length > 0;
     const x = depth * (NODE_W + COL_GAP);
@@ -196,7 +203,7 @@ export function layoutFlowGraph(root: FlowNode, expanded: ReadonlySet<string>): 
       y = nextRow * ROW;
       nextRow += 1;
     } else {
-      const ys = node.children.map((c) => place(c, depth + 1));
+      const ys = node.children.map((c) => place(c, depth + 1, node.id));
       y = (ys[0]! + ys[ys.length - 1]!) / 2;
     }
 
@@ -204,6 +211,7 @@ export function layoutFlowGraph(root: FlowNode, expanded: ReadonlySet<string>): 
       node, depth, x, y,
       hasChildren: node.children.length > 0,
       isExpanded: open,
+      parentId,
     });
 
     if (open) {
@@ -221,7 +229,7 @@ export function layoutFlowGraph(root: FlowNode, expanded: ReadonlySet<string>): 
     return y;
   };
 
-  place(root, 0);
+  place(root, 0, null);
 
   /**
    * Re-order into pre-order before returning. Positions have to be computed children-first (a
