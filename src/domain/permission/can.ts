@@ -43,6 +43,13 @@ export function resolveStaticPermissions(session: Session): ReadonlySet<StaticPe
    * department's manager and the grant moves with it, because there is nothing else to update.
    */
   if (managerOfDepartment(session.user.departmentCode) === session.user.id) perms.add('VIEW_TEAM');
+  /**
+   * A sysadmin holds it too, and theirs is COMPANY-wide (stakeholder, 2026-08-04): the Managing
+   * Directors see every employee the way a line manager sees their team. Granted here rather than
+   * added to `SYSADMIN_STATIC_PERMISSIONS` so that both routes to this one permission — managing a
+   * department, or governing the organisation — sit together and are read as the pair they are.
+   */
+  if (isSysadmin(session)) perms.add('VIEW_TEAM');
   return perms;
 }
 

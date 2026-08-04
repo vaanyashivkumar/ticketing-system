@@ -1,12 +1,13 @@
-import { useMemo } from 'react';
-import { Users, ArrowRight, AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { Fragment, useMemo } from 'react';
+import { Users, AlertTriangle, RefreshCw, Info } from 'lucide-react';
 import { useAuth } from '@hooks/useAuth';
 import { useTicketStore } from '@stores/ticketStore';
 import { scopedTickets } from '@domain/dashboard/scope';
-import { teamOf, summariseTeam, teamTotals, workFlows } from '@domain/team/teamMetrics';
+import { teamOf, summariseTeam, teamTotals, type TeamScope } from '@domain/team/teamMetrics';
+import { WorkFlowMap } from './components/WorkFlowMap';
 import { TEAM_KPIS, TEAM_COLUMNS } from '@config/team.config';
 import { MOCK_USERS } from '@config/mockUsers.config';
-import { managerOfDepartment } from '@config/leave.config';
+import { managerOfDepartment, DEPARTMENT_MANAGERS } from '@config/leave.config';
 import { DEPARTMENTS } from '@config/departments.config';
 import { PageHeader } from '@components/common/PageHeader';
 
@@ -37,24 +38,45 @@ export function TeamPage() {
   const loadError = useTicketStore((s) => s.loadError);
   const refresh = useTicketStore((s) => s.refresh);
 
+  /**
+   * A sysadmin's Team view is the WHOLE COMPANY (stakeholder, 2026-08-04) — the Managing Directors
+   * see every employee the way a line manager sees their team. Same screen, same counts, widened;
+   * a separate company screen would be a second thing to keep in step with this one.
+   */
+  const scope: TeamScope = user?.role.capabilities.includes('SUPER_ADMIN') ? 'company' : 'department';
   const team = useMemo(
-    () => (user ? teamOf(user.id, MOCK_USERS, managerOfDepartment(user.departmentCode)) : []),
-    [user],
+    () => (user
+      ? teamOf(
+          user.id,
+          MOCK_USERS,
+          managerOfDepartment(user.departmentCode),
+          scope,
+          (id, code) => DEPARTMENT_MANAGERS[code] === id,
+        )
+      : []),
+    [user, scope],
   );
   const scoped = useMemo(() => (session ? scopedTickets(session, tickets) : []), [session, tickets]);
   const rows = useMemo(() => summariseTeam(scoped, team), [scoped, team]);
   const totals = useMemo(() => teamTotals(rows), [rows]);
-  const flows = useMemo(() => workFlows(scoped, team), [scoped, team]);
 
   if (!session || !user) return null;
   const deptName = DEPARTMENTS[user.departmentCode].name;
+  const subject = scope === 'company' ? 'the company' : deptName;
+  // Not the org name: `org.config`'s default is a placeholder string, and naming the root after
+  // what it actually contains is truer than borrowing a brand the config does not reliably hold.
+  const rootLabel = scope === 'company' ? 'All departments' : deptName;
 
   return (
     <div className="w-full max-w-6xl">
       <PageHeader
         icon={Users}
-        title="Team"
-        description={`Everyone in ${deptName}, the work they are holding, and where it flows.`}
+        title={scope === 'company' ? 'Company' : 'Team'}
+        description={
+          scope === 'company'
+            ? 'Every employee, the work they are holding, and how it moves between departments.'
+            : `Everyone in ${deptName}, the work they are holding, and where it flows.`
+        }
       />
 
       {loadError ? (
@@ -88,7 +110,8 @@ export function TeamPage() {
           <section aria-labelledby="team-glance-h" className="mt-6">
             <h2 id="team-glance-h" className="text-h3 text-text">At a glance</h2>
             <p className="mt-1 text-body-sm text-text-secondary">
-              Across {totals.people} {totals.people === 1 ? 'person' : 'people'} in {deptName}.
+              Across {totals.people} {totals.people === 1 ? 'person' : 'people'}
+              {scope === 'company' ? ' across every department' : ` in ${deptName}`}.
             </p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {TEAM_KPIS.map((k) => {
@@ -125,13 +148,27 @@ export function TeamPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id} className="row-hover">
+                  {rows.map((r, i) => (
+                    <Fragment key={r.id}>
+                    {scope === 'company' && (i === 0 || rows[i - 1]!.departmentCode !== r.departmentCode) && (
+                      <tr key={`h-${r.departmentCode}`}>
+                        <th
+                          scope="colgroup"
+                          colSpan={TEAM_COLUMNS.length + 1}
+                          className="td bg-surface-sunken text-left text-label uppercase tracking-wide text-text-muted"
+                        >
+                          {DEPARTMENTS[r.departmentCode].name}
+                        </th>
+                      </tr>
+                    )}
+                    <tr className="row-hover">
                       <td className="td whitespace-nowrap">
                         {r.name}
                         {r.isManager && (
                           <span className="ml-2 rounded-full bg-surface-sunken px-2 py-0.5 text-label-sm text-text-secondary">
-                            you
+                            {/* In the company view this marks A line manager; in a team view it
+                                marks the viewer, who is the only manager on screen. */}
+                            {scope === 'company' ? 'manager' : 'you'}
                           </span>
                         )}
                       </td>
@@ -145,6 +182,7 @@ export function TeamPage() {
                         );
                       })}
                     </tr>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -162,41 +200,16 @@ export function TeamPage() {
           <section aria-labelledby="team-flow-h" className="mt-8">
             <h2 id="team-flow-h" className="text-h3 text-text">How work flows</h2>
             <p className="mt-1 text-body-sm text-text-secondary">
-              Who raised the work, and who is holding it now. People outside {deptName} are shown
-              as their department.
+              {scope === 'company'
+                ? 'Open a department to see its people, and open a person to see where their work lands.'
+                : `Who raised the work, and who is holding it now. People outside ${deptName} are shown as their department.`}
             </p>
-            {flows.length === 0 ? (
-              <div className="card card-p mt-3">
-                <p className="text-body-sm text-text-secondary">
-                  No work has moved yet — nothing has been raised or handed over.
-                </p>
-              </div>
-            ) : (
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                {flows.map((f) => (
-                  <li key={`${f.from}-${f.to}`} className="card flex items-center justify-between gap-3 px-4 py-3">
-                    <span className="flex min-w-0 items-center gap-2 text-body-sm">
-                      <span className="truncate text-text">{f.from}</span>
-                      <ArrowRight size={15} className="shrink-0 text-text-muted" aria-hidden />
-                      <span className="truncate text-text">{f.to}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      {f.internal && (
-                        <span className="rounded-full bg-info-bg px-2 py-0.5 text-label-sm text-info-text">
-                          within team
-                        </span>
-                      )}
-                      <span className="text-body-medium text-text">{f.count}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <WorkFlowMap tickets={scoped} team={team} scope={scope} rootLabel={rootLabel} />
           </section>
 
           <p className="mt-8 flex items-start gap-2 text-caption text-text-muted">
             <Info size={14} className="mt-0.5 shrink-0" aria-hidden />
-            This view re-cuts work you can already see as {deptName}’s manager. It shows counts
+            This view re-cuts work you can already see as {subject === 'the company' ? 'a system administrator' : `${deptName}’s manager`}. It shows counts
             only — no timings and no ranking of people — per the reporting ethics rule.
           </p>
         </>

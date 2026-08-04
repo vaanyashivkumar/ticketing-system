@@ -29,7 +29,18 @@ export interface TeamMember {
   readonly name: string;
   /** The manager themselves is included in their own team view — they carry work too. */
   readonly isManager: boolean;
+  /** Needed to group 27 people by department in the company-wide view. */
+  readonly departmentCode: DepartmentCode;
 }
+
+/**
+ * Whose work a viewer is looking at.
+ *
+ * `department` — a line manager, seeing the people they manage.
+ * `company` — a sysadmin (the Managing Directors), seeing every employee. It is the SAME view and
+ *   the same counts, widened; deliberately not a second screen that could drift from this one.
+ */
+export type TeamScope = 'department' | 'company';
 
 export interface MemberSummary extends TeamMember {
   /** Open work assigned to this person: their current load. */
@@ -87,16 +98,26 @@ const isDone = (t: Ticket): boolean => t.status === 'Resolved' || t.status === '
  * which the page renders as an honest empty state rather than a broken one.
  */
 export function teamOf(
-  managerId: string,
+  viewerId: string,
   users: readonly { id: string; name: string; departmentCode: DepartmentCode }[],
   departmentManagerId: string | null,
+  scope: TeamScope = 'department',
+  isDepartmentManager: (userId: string, code: DepartmentCode) => boolean = () => false,
 ): TeamMember[] {
-  if (departmentManagerId !== managerId) return [];
-  const manager = users.find((u) => u.id === managerId);
+  const mark = (u: { id: string; name: string; departmentCode: DepartmentCode }): TeamMember => ({
+    id: u.id,
+    name: u.name,
+    departmentCode: u.departmentCode,
+    // In the company view "manager" means *a* line manager, not the viewer — the viewer is the MD.
+    isManager: scope === 'company' ? isDepartmentManager(u.id, u.departmentCode) : u.id === viewerId,
+  });
+
+  if (scope === 'company') return users.map(mark);
+
+  if (departmentManagerId !== viewerId) return [];
+  const manager = users.find((u) => u.id === viewerId);
   if (!manager) return [];
-  return users
-    .filter((u) => u.departmentCode === manager.departmentCode)
-    .map((u) => ({ id: u.id, name: u.name, isManager: u.id === managerId }));
+  return users.filter((u) => u.departmentCode === manager.departmentCode).map(mark);
 }
 
 /**
