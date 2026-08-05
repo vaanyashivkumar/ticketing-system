@@ -9,3 +9,7 @@ dist-ssr
 *.log
 .vite
 coverage
+
+# TypeScript incremental build cache — a build artifact that was tracked, so it dirtied the
+# working tree on every typecheck and had to be cleared before `tsc -b` could be trusted.
+*.tsbuildinfo
