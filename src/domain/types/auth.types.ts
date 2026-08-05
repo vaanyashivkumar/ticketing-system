@@ -28,6 +28,20 @@ export interface Role {
   readonly departmentId: string;
   readonly departmentCode: DepartmentCode;
   readonly capabilities: readonly Capability[];
+  /**
+   * RIGHTS CONFERRED BY ASSIGNED CUSTOM ROLES, resolved when the session is built.
+   *
+   * They ride on the session exactly as `capabilities` do, and for the same reason: the permission
+   * engine is a PURE module over a Session, and giving it a store to import would make every
+   * authorisation decision depend on React state. The auth store resolves a user's roles into
+   * these two lists once, at sign-in and on restore; `can.ts` reads them and stays pure.
+   *
+   * Optional, and absent for everyone with no assigned role — which is what makes the derived
+   * model the untouched default rather than a special case.
+   */
+  readonly grantedStatic?: readonly StaticPermission[];
+  /** OVERRIDES to the route-derived rules. See `role.types.ts` — each one suspends an invariant. */
+  readonly grantedTicket?: readonly TicketPermission[];
 }
 
 export interface User {

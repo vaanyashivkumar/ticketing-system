@@ -50,6 +50,12 @@ export function resolveStaticPermissions(session: Session): ReadonlySet<StaticPe
    * department, or governing the organisation — sit together and are read as the pair they are.
    */
   if (isSysadmin(session)) perms.add('VIEW_TEAM');
+  /**
+   * Custom-role grants, ADDITIVE by ratification (2026-08-04). A session with none — which is
+   * everyone until an administrator assigns one — resolves exactly as it did before this existed,
+   * which is what keeps every derived rule the default rather than a legacy path.
+   */
+  session.user.role.grantedStatic?.forEach((p) => perms.add(p));
   return perms;
 }
 
@@ -107,6 +113,25 @@ export function canOnTicket(
 ): boolean {
   const rel = relationships(session, ticket);
   const sys = isSysadmin(session);
+
+  /**
+   * A CUSTOM-ROLE OVERRIDE, and the one place a ratified Business Constitution rule can be
+   * suspended (stakeholder ratification, 2026-08-04).
+   *
+   * It is checked AFTER visibility, never before: an override says "you may act on tickets you can
+   * see", not "you may see everything". Granting CLOSE_TICKET must not quietly hand someone another
+   * department's tickets to read — that is a separate right (VIEW_TICKET) and has to be granted on
+   * purpose. Without this ordering, one tick box would widen visibility as a side effect, which is
+   * precisely how a permission model stops being explicable.
+   */
+  const overridden = session.user.role.grantedTicket?.includes(verb) ?? false;
+  if (overridden && verb !== 'VIEW_TICKET') {
+    const visible = ticket.status === 'Draft'
+      ? rel.has('creator')
+      : sys || rel.has('source') || rel.has('destination') || (session.user.role.grantedTicket?.includes('VIEW_TICKET') ?? false);
+    if (visible) return true;
+  }
+  if (overridden && verb === 'VIEW_TICKET' && ticket.status !== 'Draft') return true;
 
   switch (verb) {
     // View: source OR destination OR sysadmin. No third department, ever.

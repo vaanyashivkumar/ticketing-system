@@ -3,6 +3,7 @@ import { DEPARTMENTS } from '@config/departments.config';
 import { BASE_STATIC_PERMISSIONS, DESTINATION_STATIC_PERMISSIONS, SYSADMIN_STATIC_PERMISSIONS } from '@config/permissions.config';
 import { UserService } from '@services/userService';
 import { useAuth } from '@hooks/useAuth';
+import { GovernanceBar } from './components/GovernanceBar';
 import { PageHeader } from '@components/common/PageHeader';
 import { PermissionCatalogue } from './components/PermissionCatalogue';
 import { EffectivePermissionsPanel } from './components/EffectivePermissionsPanel';
@@ -49,15 +50,16 @@ export function RolesPermissionsPage() {
           ticket’s <strong>route</strong>; static rights from department + capability. To change them you change the routing matrix
           (Category Management) or a capability grant (User Management) — never a role table.
           {' '}
-          <strong>
-            B06 asks for role creation with per-role permission assignment. That is not built, and not because it
-            was missed:
-          </strong>{' '}
-          the domain model states that “no role-keyed permission table is ever introduced”. Building one would
-          reverse a ratified decision, and it would do it by creating exactly the stored-grant table the derived
-          model exists to avoid. It needs stakeholder ratification, not a code change.
+          <strong>Custom roles now exist, by stakeholder ratification on 2026-08-04.</strong>{' '}
+          They are <strong>additive</strong>: anyone holding no role resolves exactly as this paragraph
+          describes, so the derived model remains the default rather than a legacy path. A role may
+          also carry ticket-rule <strong>overrides</strong>, and those genuinely suspend a ratified
+          rule — two-step closure, assignee-only resolution — for whoever holds it. Roles carrying
+          any are badged wherever they appear, and every grant is audited.
         </span>
       </div>
+
+      <GovernanceBar />
 
       <h2 className="mb-2 text-label uppercase text-text-muted">Departments &amp; capability</h2>
       {/**
